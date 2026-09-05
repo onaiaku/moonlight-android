@@ -10,6 +10,7 @@ import io.github.onaiaku.artmoon.PcView;
 import io.github.onaiaku.artmoon.R;
 import io.github.onaiaku.artmoon.nvstream.http.ComputerDetails;
 import io.github.onaiaku.artmoon.nvstream.http.PairingManager;
+import io.github.onaiaku.artmoon.nvstream.jni.MoonBridge;
 import io.github.onaiaku.artmoon.preferences.PreferenceConfiguration;
 
 import java.util.Collections;
@@ -143,6 +144,8 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
         TextView specRes = parentView.findViewById(R.id.am_spec_res);
         TextView specFps = parentView.findViewById(R.id.am_spec_fps);
         TextView specBitrate = parentView.findViewById(R.id.am_spec_bitrate);
+        TextView specCodec = parentView.findViewById(R.id.am_spec_codec);
+        TextView specAudio = parentView.findViewById(R.id.am_spec_audio);
         boolean online = obj.details.state == ComputerDetails.State.ONLINE;
         if (specRes != null && specFps != null && specBitrate != null) {
             if (online) {
@@ -150,13 +153,21 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
                 specRes.setText(prefs.width + "\u00d7" + prefs.height);
                 specFps.setText(prefs.fps + " FPS");
                 specBitrate.setText((prefs.bitrate + 999) / 1000 + " Mbps");
-                specRes.setVisibility(View.VISIBLE);
-                specFps.setVisibility(View.VISIBLE);
-                specBitrate.setVisibility(View.VISIBLE);
+                if (specCodec != null) {
+                    specCodec.setText(codecLabel(prefs.videoFormat));
+                }
+                if (specAudio != null) {
+                    specAudio.setText(audioLabel(prefs.audioConfiguration));
+                }
+                TextView[] chips = {specRes, specFps, specBitrate, specCodec, specAudio};
+                for (TextView c : chips) {
+                    if (c != null) c.setVisibility(View.VISIBLE);
+                }
             } else {
-                specRes.setVisibility(View.GONE);
-                specFps.setVisibility(View.GONE);
-                specBitrate.setVisibility(View.GONE);
+                TextView[] chips = {specRes, specFps, specBitrate, specCodec, specAudio};
+                for (TextView c : chips) {
+                    if (c != null) c.setVisibility(View.GONE);
+                }
             }
         }
 
@@ -191,5 +202,17 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
         else {
             overlayView.setVisibility(View.GONE);
         }
+    }
+    private static String codecLabel(PreferenceConfiguration.FormatOption fmt) {
+        if (fmt == PreferenceConfiguration.FormatOption.FORCE_AV1) return "AV1";
+        if (fmt == PreferenceConfiguration.FormatOption.FORCE_HEVC) return "HEVC";
+        if (fmt == PreferenceConfiguration.FormatOption.FORCE_H264) return "H.264";
+        return "Auto";
+    }
+
+    private static String audioLabel(MoonBridge.AudioConfiguration audio) {
+        if (audio == MoonBridge.AUDIO_CONFIGURATION_51_SURROUND) return "5.1";
+        if (audio == MoonBridge.AUDIO_CONFIGURATION_71_SURROUND) return "7.1";
+        return "Stereo";
     }
 }

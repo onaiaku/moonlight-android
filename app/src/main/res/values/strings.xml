@@ -365,4 +365,11 @@
     <string name="am_hero_auth">ArtLight Authorized</string>
     <string name="am_hero_ready">Ready to stream</string>
     <string name="am_hero_offline">Offline</string>
+    <string name="am_picker_add">+ Add a host</string>
+    <string name="am_footer_shutdown">Shutdown</string>
+    <string name="am_footer_settings">Settings</string>
+    <string name="am_footer_exit">Exit</string>
+    <string name="am_footer_key_p">P</string>
+    <string name="am_footer_key_s">S</string>
+    <string name="am_footer_key_esc">Esc</string>
 </resources>

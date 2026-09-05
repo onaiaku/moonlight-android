@@ -92,13 +92,87 @@
             android:contentDescription="@string/am_add_pc" />
     </LinearLayout>
 
+    <!-- Host picker row (portrait): PgUp / selected host / + Add a host / PgDn -->
+    <LinearLayout
+        android:id="@+id/am_picker_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/am_subtitle"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingLeft="12dp"
+        android:paddingEnd="12dp"
+        android:paddingRight="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PgUp"
+            android:textSize="11sp"
+            android:textColor="@color/am_text_secondary"
+            android:background="@drawable/am_picker_pill"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginRight="8dp" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="@color/am_text_secondary"
+            android:background="@drawable/am_picker_pill"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:singleLine="true"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/manuallyAddPcText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/am_picker_add"
+            android:textSize="12sp"
+            android:textColor="@color/am_text_secondary"
+            android:background="@drawable/am_picker_pill"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:layout_marginStart="8dp"
+            android:layout_marginLeft="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginRight="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PgDn"
+            android:textSize="11sp"
+            android:textColor="@color/am_text_secondary"
+            android:background="@drawable/am_picker_pill"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp" />
+    </LinearLayout>
+
     <RelativeLayout
         android:id="@+id/pcFragmentContainer"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:layout_below="@+id/am_subtitle"
-        android:layout_alignParentBottom="true" >
+        android:layout_below="@+id/am_picker_row"
+        android:layout_above="@+id/am_footer" >
 
         <RelativeLayout
             android:id="@+id/no_pc_found_layout"
@@ -128,5 +202,58 @@
         </RelativeLayout>
 
     </RelativeLayout>
+
+    <!-- Footer keycaps (portrait): P Shutdown / S Settings / Esc Exit -->
+    <LinearLayout
+        android:id="@+id/am_footer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingTop="6dp"
+        android:paddingBottom="10dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/am_footer_shutdown"
+            android:textSize="11sp"
+            android:textColor="@color/am_text_secondary"
+            android:background="@drawable/am_footer_key"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginRight="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/am_footer_settings"
+            android:textSize="11sp"
+            android:textColor="@color/am_text_secondary"
+            android:background="@drawable/am_footer_key"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginRight="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/am_footer_exit"
+            android:textSize="11sp"
+            android:textColor="@color/am_text_secondary"
+            android:background="@drawable/am_footer_key"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp" />
+    </LinearLayout>
 
 </RelativeLayout>

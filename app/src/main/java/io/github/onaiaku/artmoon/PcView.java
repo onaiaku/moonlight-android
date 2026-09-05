@@ -145,6 +145,17 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
 
         // Setup the list view
         ImageButton settingsButton = findViewById(R.id.settingsButton);
+        TextView addPicker = findViewById(R.id.manuallyAddPcText);
+        if (addPicker != null) {
+            addPicker.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    // Same flow as the rail/toolbar add button: open the manual-add dialog
+                    addComputerButton.performClick();
+                }
+            });
+        }
+
         ImageButton addComputerButton = findViewById(R.id.manuallyAddPc);
         ImageButton helpButton = findViewById(R.id.helpButton);
 
