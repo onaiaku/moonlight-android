@@ -6,4 +6,5 @@
     <dimen name="tv_channel_logo_width">80dp</dimen>
     <dimen name="tv_channel_logo_height">80dp</dimen>
 
+    <dimen name="am_hero_height">240dp</dimen>
 </resources>

@@ -149,7 +149,7 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
                 PreferenceConfiguration prefs = PreferenceConfiguration.readPreferences(context);
                 specRes.setText(prefs.width + "\u00d7" + prefs.height);
                 specFps.setText(prefs.fps + " FPS");
-                specBitrate.setText(prefs.bitrate + " Mbps");
+                specBitrate.setText((prefs.bitrate + 999) / 1000 + " Mbps");
                 specRes.setVisibility(View.VISIBLE);
                 specFps.setVisibility(View.VISIBLE);
                 specBitrate.setVisibility(View.VISIBLE);
