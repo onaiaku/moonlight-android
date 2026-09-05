@@ -100,22 +100,67 @@ public class HostMetricsPoller {
         }
 
         final PollTarget tgt = target;
+        // v10: RTT = round-trip time of this very STATS request — a real,
+        // measured number, not a placeholder.
+        final long sentAtNanos = android.os.SystemClock.elapsedRealtimeNanos();
         bridge.requestStats(tgt.address, new ArtLightBridge.ResponseCallback() {
             @Override
             public void onResult(final String response) {
                 pollInFlight = false;
-                final String text = formatStats(response, tgt.name);
+                final long rttMs = (android.os.SystemClock.elapsedRealtimeNanos() - sentAtNanos) / 1_000_000L;
+                final StatsSnapshot snap = parseStats(response, rttMs);
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
                         if (!running) {
                             return;
                         }
-                        adapter.updateTelemetryByUuid(tgt.uuid, text);
+                        adapter.updateTelemetryByUuid(tgt.uuid, snap.summaryLine);
+                        adapter.updateStatsByUuid(tgt.uuid, snap.rttMs, snap.gpuPercent, snap.netMbps);
                     }
                 });
             }
         });
+    }
+
+    /** Per-poll telemetry values for the hero card's right column. */
+    private static final class StatsSnapshot {
+        final String summaryLine;
+        final Integer rttMs;
+        final Integer gpuPercent;
+        final Integer netMbps;
+
+        StatsSnapshot(String summaryLine, Integer rttMs, Integer gpuPercent, Integer netMbps) {
+            this.summaryLine = summaryLine;
+            this.rttMs = rttMs;
+            this.gpuPercent = gpuPercent;
+            this.netMbps = netMbps;
+        }
+    }
+
+    /**
+     * v10: extract the right-column numbers (RTT measured, GPU% + NET from
+     * the live STATS payload). Any value the host doesn't provide stays
+     * null and its block hides — never faked.
+     */
+    private static StatsSnapshot parseStats(String json, long rttMs) {
+        Integer gpu = null;
+        Integer net = null;
+        if (json != null && !json.isEmpty() && !"STATS_UNAVAILABLE".equals(json)) {
+            try {
+                JSONObject o = new JSONObject(json);
+                int g = o.optInt("gpu", -1);
+                if (g >= 0) {
+                    gpu = g;
+                }
+                if (o.has("net_tx")) {
+                    net = o.optInt("net_tx", 0);
+                }
+            } catch (Exception e) {
+                LimeLog.info("HostMetricsPoller: stats parse failed: " + e.getMessage());
+            }
+        }
+        return new StatsSnapshot(formatStats(json, null), (int) rttMs, gpu, net);
     }
 
     /**

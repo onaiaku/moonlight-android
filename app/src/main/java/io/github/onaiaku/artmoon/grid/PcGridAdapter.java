@@ -20,8 +20,37 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
 
     private final java.util.HashMap<String, android.view.View> boundViews = new java.util.HashMap<>();
 
+    /** Optional hook to the owning PcView so card actions can reuse its flows. */
+    private io.github.onaiaku.artmoon.PcView pcView;
+
+    public void setPcView(io.github.onaiaku.artmoon.PcView view) {
+        this.pcView = view;
+    }
+
     public PcGridAdapter(Context context, PreferenceConfiguration prefs) {
         super(context, getLayoutIdForPreferences(prefs));
+    }
+
+    /**
+     * v10: the hero card must FILL the viewport between the picker row and
+     * the footer (approved render: no dead gap below the card). GridView
+     * ignores a child's match_parent, so we measure the viewport from the
+     * parent and set the row height explicitly on first bind.
+     */
+    @Override
+    public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
+        View v = super.getView(position, convertView, parent);
+        if (parent != null && parent.getHeight() > 0
+                && v.getLayoutParams().height != parent.getHeight()) {
+            android.view.ViewGroup.LayoutParams lp = v.getLayoutParams();
+            lp.height = parent.getHeight();
+            v.setLayoutParams(lp);
+        }
+        PcView.ComputerObject obj = (PcView.ComputerObject) getItem(position);
+        if (obj != null) {
+            boundViews.put(obj.details.uuid, v);
+        }
+        return v;
     }
 
     private static int getLayoutIdForPreferences(PreferenceConfiguration prefs) {
@@ -33,15 +62,6 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
         setLayoutId(getLayoutIdForPreferences(prefs));
     }
 
-    @Override
-    public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
-        View v = super.getView(position, convertView, parent);
-        PcView.ComputerObject obj = (PcView.ComputerObject) getItem(position);
-        if (obj != null) {
-            boundViews.put(obj.details.uuid, v);
-        }
-        return v;
-    }
 
     @Override
     public void clear() {
@@ -86,6 +106,47 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
 
     public View getViewForComputer(String uuid) {
         return boundViews.get(uuid);
+    }
+
+    /**
+     * v10: paint the right-column stat blocks (RTT / GPU / NET) on the card
+     * bound to this host. Values may be null — a null hides its block and,
+     * if ALL are null, the whole stats column hides. Never faked.
+     */
+    public void updateStatsByUuid(String uuid, Integer rttMs, Integer gpuPercent, Integer netMbps) {
+        View v = boundViews.get(uuid);
+        if (v == null) {
+            return;
+        }
+        android.view.View col = v.findViewById(R.id.am_stats_col);
+        if (col == null) {
+            return;
+        }
+        boolean any = false;
+        any |= bindStat(v, R.id.am_stat_rtt_group, R.id.am_stat_rtt_value,
+                rttMs == null ? null : rttMs + " ms");
+        any |= bindStat(v, R.id.am_stat_gpu_group, R.id.am_stat_gpu_value,
+                gpuPercent == null ? null : gpuPercent + "%");
+        any |= bindStat(v, R.id.am_stat_net_group, R.id.am_stat_net_value,
+                netMbps == null ? null : netMbps + "Mb/s");
+        col.setVisibility(any ? View.VISIBLE : View.GONE);
+    }
+
+    private static boolean bindStat(View parent, int groupId, int valueId, String value) {
+        android.view.View group = parent.findViewById(groupId);
+        if (group == null) {
+            return false;
+        }
+        if (value == null) {
+            group.setVisibility(View.GONE);
+            return false;
+        }
+        TextView tv = parent.findViewById(valueId);
+        if (tv != null) {
+            tv.setText(value);
+        }
+        group.setVisibility(View.VISIBLE);
+        return true;
     }
 
     public boolean removeComputer(PcView.ComputerObject computer) {
@@ -176,6 +237,13 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
         }
         else {
             prgView.setVisibility(View.INVISIBLE);
+        }
+
+        // v10: bind the Open/Options action row to the same flows as the
+        // grid tap (paired -> app list, unpaired -> pairing, offline/unknown
+        // -> context menu). The hero card's buttons must never dead-end.
+        if (pcView != null) {
+            pcView.bindHeroCardActions(parentView, obj);
         }
 
         txtView.setText(obj.details.name);

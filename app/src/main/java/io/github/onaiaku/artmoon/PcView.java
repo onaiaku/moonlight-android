@@ -262,6 +262,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
                 Service.BIND_AUTO_CREATE);
 
         pcGridAdapter = new PcGridAdapter(this, PreferenceConfiguration.readPreferences(this));
+        pcGridAdapter.setPcView(this);
 
         initializeViews();
     }
@@ -909,11 +910,71 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
 
         // Notify the view that the data has changed
         pcGridAdapter.notifyDataSetChanged();
+
+        // v10: keep the picker row's selected-host pill in sync with the
+        // first (sorted) host — the render's center pill carries the
+        // selected host's name.
+        updatePickerHostPill();
+    }
+
+    /**
+     * v10: populate the picker row's center pill with the selected host's
+     * name (first host in the sorted grid — there is one host today).
+     */
+    private void updatePickerHostPill() {
+        android.widget.TextView pill = findViewById(R.id.am_picker_host_pill);
+        if (pill == null) {
+            return;
+        }
+        if (pcGridAdapter.getCount() > 0) {
+            ComputerObject first = (ComputerObject) pcGridAdapter.getItem(0);
+            pill.setText(first.details.name);
+            pill.setVisibility(View.VISIBLE);
+        }
+        else {
+            pill.setVisibility(View.INVISIBLE);
+        }
     }
 
     @Override
     public int getAdapterFragmentLayoutId() {
         return R.layout.pc_grid_view;
+    }
+
+    /**
+     * v10: wire the hero card's Open / Options buttons to the same flows as
+     * the grid tap. Called from the adapter during every populateView, so
+     * the click listeners always carry the freshest computer object.
+     */
+    public void bindHeroCardActions(View cardView, ComputerObject computer) {
+        if (cardView == null || computer == null) {
+            return;
+        }
+        View open = cardView.findViewById(R.id.am_action_open);
+        if (open != null) {
+            open.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (computer.details.state == ComputerDetails.State.UNKNOWN ||
+                        computer.details.state == ComputerDetails.State.OFFLINE) {
+                        openContextMenu(cardView);
+                    } else if (computer.details.pairState != PairState.PAIRED) {
+                        doPair(computer.details);
+                    } else {
+                        doAppList(computer.details, false, false);
+                    }
+                }
+            });
+        }
+        View options = cardView.findViewById(R.id.am_action_options);
+        if (options != null) {
+            options.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openContextMenu(cardView);
+                }
+            });
+        }
     }
 
     @Override
