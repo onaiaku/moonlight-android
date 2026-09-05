@@ -36,6 +36,8 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
 
     private CachedAppAssetLoader loader;
     private android.widget.TextView loaderTextViewDummy;
+    // Landscape master-detail: the row currently shown in the detail panel.
+    private AppView.AppObject selectedApp;
     private Set<Integer> hiddenAppIds = new HashSet<>();
     private ArrayList<AppView.AppObject> allApps = new ArrayList<>();
     private java.util.HashMap<String, String> storeMap = new java.util.HashMap<>();
@@ -115,6 +117,21 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
 
         // This will trigger the view to reload with the new layout
         setLayoutId(getLayoutIdForPreferences(prefs));
+    }
+
+    public void setSelectedApp(AppView.AppObject app) {
+        this.selectedApp = app;
+    }
+
+    /**
+     * Landscape detail panel: load the app's box art into the big cover view
+     * through the same cached asset pipeline the rows use.
+     */
+    public void populateCover(io.github.onaiaku.artmoon.nvstream.http.NvApp app, ImageView coverView) {
+        if (loaderTextViewDummy == null) {
+            loaderTextViewDummy = new android.widget.TextView(context);
+        }
+        loader.populateImageView(app, coverView, loaderTextViewDummy);
     }
 
     public void cancelQueuedOperations() {
@@ -223,6 +240,15 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
         }
         else {
             parentView.setAlpha(1.0f);
+        }
+
+        // Landscape master-detail: the row feeding the detail panel gets the
+        // blue selection glow from the approved render; every other row stays
+        // on the plain card background.
+        if (selectedApp != null && obj == selectedApp) {
+            parentView.setBackgroundResource(R.drawable.am_pick_row_sel);
+        } else {
+            parentView.setBackgroundResource(R.drawable.am_card);
         }
     }
 }

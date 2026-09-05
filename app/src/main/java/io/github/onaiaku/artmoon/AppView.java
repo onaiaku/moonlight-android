@@ -13,6 +13,7 @@ import io.github.onaiaku.artmoon.nvstream.http.NvApp;
 import io.github.onaiaku.artmoon.nvstream.http.NvHTTP;
 import io.github.onaiaku.artmoon.nvstream.http.PairingManager;
 import io.github.onaiaku.artmoon.preferences.PreferenceConfiguration;
+import io.github.onaiaku.artmoon.preferences.StreamSettings;
 import io.github.onaiaku.artmoon.ui.AdapterFragment;
 import io.github.onaiaku.artmoon.ui.AdapterFragmentCallbacks;
 import io.github.onaiaku.artmoon.utils.CacheHelper;
@@ -64,6 +65,10 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
     private boolean inForeground;
     private boolean showHiddenApps;
     private HashSet<Integer> hiddenAppIds = new HashSet<>();
+
+    // Landscape master-detail picker: the app highlighted in the master list
+    // and shown in the detail panel. Null in portrait (tap-to-start there).
+    private AppObject selectedApp;
 
     private final static int START_OR_RESUME_ID = 1;
     private final static int QUIT_ID = 2;
@@ -598,6 +603,7 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
 
                 if (updated) {
                     appGridAdapter.notifyDataSetChanged();
+                    updateDetailPanel();
                 }
             }
         });
@@ -677,6 +683,91 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
         });
     }
 
+    /**
+     * Landscape master-detail: refresh the detail panel from selectedApp.
+     * No-op in portrait (the panel isn't inflated) and before the adapter
+     * exists. The cover comes from the same cached asset loader the rows use.
+     */
+    private void updateDetailPanel() {
+        View detail = findViewById(R.id.am_pick_detail);
+        if (detail == null || appGridAdapter == null) {
+            return;
+        }
+        // If the selected app vanished from the list (host-side removal),
+        // drop the selection instead of showing a stale panel.
+        if (selectedApp != null) {
+            boolean stillThere = false;
+            for (int i = 0; i < appGridAdapter.getCount(); i++) {
+                if (appGridAdapter.getItem(i) == selectedApp) {
+                    stillThere = true;
+                    break;
+                }
+            }
+            if (!stillThere) {
+                selectedApp = null;
+                appGridAdapter.setSelectedApp(null);
+                appGridAdapter.notifyDataSetChanged();
+            }
+        }
+        if (selectedApp == null) {
+            detail.setVisibility(View.GONE);
+            return;
+        }
+        ImageView cover = findViewById(R.id.am_pick_cover);
+        TextView title = findViewById(R.id.am_pick_title);
+        TextView running = findViewById(R.id.am_pick_running);
+        View resumeBtn = findViewById(R.id.am_pick_resume);
+        View stopBtn = findViewById(R.id.am_pick_stop);
+        if (cover != null) {
+            appGridAdapter.populateCover(selectedApp.app, cover);
+        }
+        if (title != null) {
+            title.setText(selectedApp.app.getAppName());
+        }
+        boolean isRunning = lastRunningAppId != 0
+                && lastRunningAppId == selectedApp.app.getAppId();
+        if (running != null) {
+            running.setVisibility(isRunning ? View.VISIBLE : View.GONE);
+        }
+        if (resumeBtn != null) {
+            resumeBtn.setVisibility(isRunning ? View.VISIBLE : View.GONE);
+        }
+        if (stopBtn != null) {
+            stopBtn.setVisibility(isRunning ? View.VISIBLE : View.GONE);
+        }
+        detail.setVisibility(View.VISIBLE);
+    }
+
+    private void startSelectedApp() {
+        if (selectedApp != null && computer != null) {
+            ServerHelper.doStartWithCurtain(AppView.this, selectedApp.app, computer, managerBinder);
+        }
+    }
+
+    private void stopSelectedApp() {
+        if (selectedApp == null) {
+            return;
+        }
+        final AppObject app = selectedApp;
+        UiHelper.displayQuitConfirmationDialog(this, new Runnable() {
+            @Override
+            public void run() {
+                suspendGridUpdates = true;
+                ServerHelper.doQuit(AppView.this, computer,
+                        app.app, managerBinder, new Runnable() {
+                    @Override
+                    public void run() {
+                        // Trigger a poll immediately
+                        suspendGridUpdates = false;
+                        if (poller != null) {
+                            poller.pollNow();
+                        }
+                    }
+                });
+            }
+        }, null);
+    }
+
     @Override
     public int getAdapterFragmentLayoutId() {
         return PreferenceConfiguration.readPreferences(AppView.this).smallIconMode ?
@@ -692,6 +783,17 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
                                     long id) {
                 AppObject app = (AppObject) appGridAdapter.getItem(pos);
 
+                // Landscape master-detail: tap selects and drives the detail
+                // panel; Play/Resume in the panel starts the stream. Portrait
+                // keeps the classic tap-to-start behaviour.
+                if (findViewById(R.id.am_pick_detail) != null) {
+                    selectedApp = app;
+                    appGridAdapter.setSelectedApp(app);
+                    appGridAdapter.notifyDataSetChanged();
+                    updateDetailPanel();
+                    return;
+                }
+
                 // Only open the context menu if something is running, otherwise start it
                 if (lastRunningAppId != 0) {
                     openContextMenu(arg1);
@@ -703,6 +805,68 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
         UiHelper.applyStatusBarPadding(listView);
         registerForContextMenu(listView);
         listView.requestFocus();
+
+        // Detail panel actions (landscape only — null-safe everywhere else).
+        // Reselect whatever is running so the panel starts populated.
+        View playBtn = findViewById(R.id.am_pick_play);
+        if (playBtn != null) {
+            playBtn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startSelectedApp();
+                }
+            });
+        }
+        View resumeBtn = findViewById(R.id.am_pick_resume);
+        if (resumeBtn != null) {
+            resumeBtn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    // Resume is the same as start for us (desktop parity)
+                    startSelectedApp();
+                }
+            });
+        }
+        View stopBtn = findViewById(R.id.am_pick_stop);
+        if (stopBtn != null) {
+            stopBtn.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    stopSelectedApp();
+                }
+            });
+        }
+        // Footer keycaps (landscape): S opens settings, Esc returns to hosts —
+        // same flows the hosts screen wires, never dead labels.
+        View keySettings = findViewById(R.id.am_pick_key_settings);
+        if (keySettings != null) {
+            keySettings.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startActivity(new Intent(AppView.this, StreamSettings.class));
+                }
+            });
+        }
+        View keyHosts = findViewById(R.id.am_pick_key_hosts);
+        if (keyHosts != null) {
+            keyHosts.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    finish();
+                }
+            });
+        }
+        if (selectedApp == null && lastRunningAppId != 0) {
+            for (int i = 0; i < appGridAdapter.getCount(); i++) {
+                AppObject candidate = (AppObject) appGridAdapter.getItem(i);
+                if (candidate.isRunning) {
+                    selectedApp = candidate;
+                    appGridAdapter.setSelectedApp(candidate);
+                    break;
+                }
+            }
+        }
+        updateDetailPanel();
     }
 
     public static class AppObject {

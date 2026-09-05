@@ -380,4 +380,14 @@
     <string name="am_stat_hostlat">Host lat.</string>
     <string name="am_stat_drops">Drops</string>
     <string name="am_auth_pending">ArtLight Pending</string>
+    <!-- App picker (landscape master-detail) -->
+    <string name="am_pick_play" translatable="false">Play</string>
+    <string name="am_pick_resume" translatable="false">Resume</string>
+    <string name="am_pick_stop" translatable="false">Stop</string>
+    <string name="am_pick_running" translatable="false">running now</string>
+    <string name="am_pick_online" translatable="false">Online</string>
+    <string name="am_pick_key_s" translatable="false">S</string>
+    <string name="am_pick_key_esc" translatable="false">Esc</string>
+    <string name="am_pick_settings" translatable="false">Settings</string>
+    <string name="am_pick_hosts" translatable="false">Hosts</string>
 </resources>
