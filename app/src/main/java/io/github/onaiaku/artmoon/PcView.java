@@ -145,19 +145,21 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
 
         // Setup the list view
         ImageButton settingsButton = findViewById(R.id.settingsButton);
-        TextView addPicker = findViewById(R.id.manuallyAddPcText);
+        ImageButton addComputerButton = findViewById(R.id.manuallyAddPc);
+        ImageButton helpButton = findViewById(R.id.helpButton);
+
+        // Picker-row "+ Add a host": same flow as the rail/toolbar add button.
+        // Null-safe: portrait and landscape both carry the id; other layouts may not.
+        android.widget.TextView addPicker = findViewById(R.id.manuallyAddPcText);
         if (addPicker != null) {
+            final ImageButton addBtn = addComputerButton;
             addPicker.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    // Same flow as the rail/toolbar add button: open the manual-add dialog
-                    addComputerButton.performClick();
+                    addBtn.performClick();
                 }
             });
         }
-
-        ImageButton addComputerButton = findViewById(R.id.manuallyAddPc);
-        ImageButton helpButton = findViewById(R.id.helpButton);
 
         settingsButton.setOnClickListener(new OnClickListener() {
             @Override
