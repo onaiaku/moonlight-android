@@ -120,6 +120,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
     private final static int TEST_NETWORK_ID = 10;
     private final static int GAMESTREAM_EOL_ID = 11;
     private final static int POWER_ID = 12;
+    private final static int ARTLIGHT_PAIR_ID = 13;
 
     private io.github.onaiaku.artmoon.artlight.HostMetricsPoller metricsPoller;
     private io.github.onaiaku.artmoon.artlight.HostAuthManager authManager;
@@ -403,6 +404,9 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
             // ArtLight: signed power actions (SHUTDOWN / SHUTDOWN_UPDATE) via
             // ArtLightBridge. Destructive — confirm dialog before firing.
             menu.add(Menu.NONE, POWER_ID, 5, getResources().getString(R.string.am_power_menu));
+
+            // ArtLight Control enrollment - opt-in only (long-press the host to pair)
+            menu.add(Menu.NONE, ARTLIGHT_PAIR_ID, 6, getResources().getString(R.string.pcview_menu_artlight_pair));
         }
 
         menu.add(Menu.NONE, TEST_NETWORK_ID, 5, getResources().getString(R.string.pcview_menu_test_network));
@@ -701,6 +705,10 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
                 HelpLauncher.launchGameStreamEolFaq(PcView.this);
                 return true;
 
+            case ARTLIGHT_PAIR_ID:
+                probeArtLightAuth(computer.details);
+                return true;
+
             case POWER_ID:
                 AdapterContextMenuInfo powerMenuInfo =
                         (AdapterContextMenuInfo) item.getMenuInfo();
@@ -884,12 +892,6 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
 
             // Remove the "Discovery in progress" view
             noPcFoundLayout.setVisibility(View.INVISIBLE);
-        }
-
-        // ArtLight: probe newly-seen online hosts for Control enrollment state
-        if (details.state == ComputerDetails.State.ONLINE &&
-                authProbedUuids.add(details.uuid)) {
-            probeArtLightAuth(details);
         }
 
         // Notify the view that the data has changed

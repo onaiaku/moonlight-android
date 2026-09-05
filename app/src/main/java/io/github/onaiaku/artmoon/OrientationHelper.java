@@ -20,7 +20,12 @@ public final class OrientationHelper {
         boolean isTelevision = uiMode == android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
                 || activity.getPackageManager().hasSystemFeature("android.software.leanback");
 
-        if (!isTelevision) {
+        // Large screens (tablets, sw >= 600dp) rotate freely - portrait lock is
+        // a phone-only behaviour. Spec: docs/android-ui-spec.md section 1.
+        boolean isLargeScreen = activity.getResources().getConfiguration()
+                .smallestScreenWidthDp >= 600;
+
+        if (!isTelevision && !isLargeScreen) {
             activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         }
     }
