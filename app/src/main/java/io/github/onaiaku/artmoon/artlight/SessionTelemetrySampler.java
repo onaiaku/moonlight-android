@@ -153,7 +153,7 @@ public class SessionTelemetrySampler {
             s.put("jitter_avg", round1(jitterMs));
             s.put("jitter_max", round1(Math.max(batchJitterMax, jitterMs)));
             s.put("decode_ms", round1(ws.decodeMs));
-            s.put("bitrate_mbps", round1(targetBitrateKbps / 1000.0));
+            s.put("bitrate_mbps", round1(targetBitrateKbps / 1000.0f));
             if (ws.hasHostLatency) {
                 s.put("host_latency_avg", round1(ws.hostLatencyAvgMs));
                 s.put("host_latency_max", round1(Math.max(batchHostLatMax, ws.hostLatencyMaxMs)));
