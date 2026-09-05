@@ -1,29 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- ArtMoon small cover: compact rounded frame, title beneath (small-icon preference). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="100dp"
-    android:layout_height="133dp"
-    android:padding="5dp">
-    <ImageView
-        android:id="@+id/grid_image"
-        android:cropToPadding="false"
-        android:scaleType="fitXY"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="4dp">
+
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-    </ImageView>
-    <ImageView
-        android:id="@+id/grid_overlay"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="10dp"
-        android:layout_width="33dp"
-        android:layout_height="33dp">
-    </ImageView>
+        android:layout_height="133dp"
+        android:background="@drawable/am_cover_frame">
+
+        <ImageView
+            android:id="@+id/grid_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:cropToPadding="true" />
+
+        <ImageView
+            android:id="@+id/grid_overlay"
+            android:layout_width="33dp"
+            android:layout_height="33dp"
+            android:layout_gravity="center"
+            android:scaleType="fitCenter" />
+
+        <ProgressBar
+            android:id="@+id/grid_spinner"
+            android:layout_width="33dp"
+            android:layout_height="33dp"
+            android:layout_gravity="center"
+            android:indeterminate="true" />
+    </FrameLayout>
+
     <TextView
         android:id="@+id/grid_text"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/grid_overlay"
-        android:layout_margin="5dp"
-        android:gravity="center"
-        android:textSize="14sp">
-    </TextView>
-</RelativeLayout>
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textSize="12sp"
+        android:textColor="@color/am_text_primary"
+        android:maxLines="1"
+        android:ellipsize="end" />
+</LinearLayout>

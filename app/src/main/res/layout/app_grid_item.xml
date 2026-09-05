@@ -1,29 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+    ArtMoon app cover card. Rounded poster frame with the title beneath,
+    mirroring the desktop AppsScreen cover treatment. Replaces upstream's
+    poster-with-name-overlaid-in-the-middle layout.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="150dp"
-    android:layout_height="200dp"
-    android:padding="10dp">
-    <ImageView
-        android:id="@+id/grid_image"
-        android:cropToPadding="false"
-        android:scaleType="fitXY"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="6dp">
+
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-    </ImageView>
-    <ImageView
-        android:id="@+id/grid_overlay"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="10dp"
-        android:layout_width="50dp"
-        android:layout_height="50dp">
-    </ImageView>
+        android:layout_height="210dp"
+        android:background="@drawable/am_cover_frame">
+
+        <ImageView
+            android:id="@+id/grid_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:cropToPadding="true" />
+
+        <ImageView
+            android:id="@+id/grid_overlay"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_gravity="center"
+            android:scaleType="fitCenter" />
+
+        <ProgressBar
+            android:id="@+id/grid_spinner"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_gravity="center"
+            android:indeterminate="true" />
+    </FrameLayout>
+
     <TextView
         android:id="@+id/grid_text"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/grid_overlay"
-        android:layout_margin="5dp"
-        android:gravity="center"
-        android:textSize="18sp">
-    </TextView>
-</RelativeLayout>
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textSize="14sp"
+        android:textColor="@color/am_text_primary"
+        android:maxLines="2"
+        android:ellipsize="end" />
+</LinearLayout>

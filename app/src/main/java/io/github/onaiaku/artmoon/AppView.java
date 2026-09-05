@@ -41,6 +41,7 @@ import android.view.View;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
+import android.widget.ImageButton;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -313,6 +314,17 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
         TextView label = findViewById(R.id.appListText);
         setTitle(computerName);
         label.setText(computerName);
+
+        // ArtMoon header back button (desktop header affordance).
+        ImageButton backButton = findViewById(R.id.am_back);
+        if (backButton != null) {
+            backButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    finish();
+                }
+            });
+        }
 
         // Bind to the computer manager service
         bindService(new Intent(this, ComputerManagerService.class), serviceConnection,

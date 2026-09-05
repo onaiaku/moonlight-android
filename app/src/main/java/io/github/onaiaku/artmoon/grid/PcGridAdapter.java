@@ -51,11 +51,36 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
     @Override
     public void populateView(View parentView, ImageView imgView, ProgressBar prgView, TextView txtView, ImageView overlayView, PcView.ComputerObject obj) {
         imgView.setImageResource(R.drawable.ic_computer);
+
+        // ArtMoon status dot + label, ported from the desktop's host card:
+        // online green, pairing amber, offline red — always semantic, never the accent.
+        View statusDot = parentView.findViewById(R.id.status_dot);
+        TextView statusLabel = parentView.findViewById(R.id.status_label);
+
         if (obj.details.state == ComputerDetails.State.ONLINE) {
             imgView.setAlpha(1.0f);
+            if (statusDot != null) statusDot.setBackgroundResource(R.drawable.am_dot_online);
+            if (statusLabel != null) {
+                statusLabel.setText(obj.details.pairState == PairingManager.PairState.NOT_PAIRED
+                        ? R.string.am_status_unpaired : R.string.am_status_online);
+                statusLabel.setTextColor(context.getResources().getColor(R.color.am_online));
+            }
+        }
+        else if (obj.details.state == ComputerDetails.State.UNKNOWN) {
+            imgView.setAlpha(0.6f);
+            if (statusDot != null) statusDot.setBackgroundResource(R.drawable.am_dot_pairing);
+            if (statusLabel != null) {
+                statusLabel.setText(R.string.am_status_checking);
+                statusLabel.setTextColor(context.getResources().getColor(R.color.am_pairing));
+            }
         }
         else {
             imgView.setAlpha(0.4f);
+            if (statusDot != null) statusDot.setBackgroundResource(R.drawable.am_dot_offline);
+            if (statusLabel != null) {
+                statusLabel.setText(R.string.am_status_offline);
+                statusLabel.setTextColor(context.getResources().getColor(R.color.am_offline));
+            }
         }
 
         if (obj.details.state == ComputerDetails.State.UNKNOWN) {
