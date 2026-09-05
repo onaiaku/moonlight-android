@@ -24,15 +24,40 @@ public class HostAuthManager {
     }
 
     private static final long RETRY_MS = 3000;
-    private static final int MAX_ATTEMPTS = 5;
+    private static final long MAX_RETRY_MS = 15000;
 
     private final ArtLightBridge bridge;
+    private final android.content.SharedPreferences prefs;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final java.util.HashMap<String, String> pinsByUuid = new java.util.HashMap<>();
     private final java.util.HashMap<String, Listener> listeners = new java.util.HashMap<>();
 
+    private static final String PREFS_NAME = "artlight_auth";
+    private static final String KEY_EVER_AUTHORIZED = "ever_authorized_uuids";
+
     public HostAuthManager(Context context) {
         this.bridge = new ArtLightBridge(context);
+        this.prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    }
+
+    /**
+     * True once this host has ever approved us (ENROLLED). Persisted so the
+     * silent background re-probe (desktop parity with HomeScreen.qml's access
+     * poller) only ever targets hosts we've paired with before — hosts we've
+     * never paired stay untouched, so no host is ever shown an unprompted
+     * "allow this device?" request.
+     */
+    public boolean isEverAuthorized(String uuid) {
+        java.util.Set<String> set = prefs.getStringSet(KEY_EVER_AUTHORIZED, null);
+        return set != null && set.contains(uuid);
+    }
+
+    private void markEverAuthorized(String uuid) {
+        java.util.Set<String> set = new java.util.HashSet<>(
+                prefs.getStringSet(KEY_EVER_AUTHORIZED, new java.util.HashSet<String>()));
+        if (set.add(uuid)) {
+            prefs.edit().putStringSet(KEY_EVER_AUTHORIZED, set).apply();
+        }
     }
 
     public void setListener(String uuid, Listener listener) {
@@ -79,29 +104,37 @@ public class HostAuthManager {
                     pin = String.format("%04d", (int) (Math.random() * 10000));
                     pinsByUuid.put(uuid, pin);
                 }
-                enrollWithRetries(uuid, address, pin, MAX_ATTEMPTS);
+                enrollWithRetries(uuid, address, pin, RETRY_MS);
             }
         });
     }
 
+    /**
+     * Enrollment poll loop. Desktop parity (HomeScreen.qml): the access probe
+     * runs "every 2.5 s until it settles" — NO attempt cap. If we stopped
+     * after a handful of tries, a host approval that lands later than the cap
+     * would never deliver ENROLLED and the PIN popup would hang open forever.
+     * Backoff is gentle (3 s -> 15 s ceiling) and the loop only stops on an
+     * outcome: ENROLLED, DENIED, or a host that stops answering.
+     */
     private void enrollWithRetries(final String uuid, final String address,
-                                   final String pin, final int attemptsLeft) {
+                                   final String pin, final long delayMs) {
         bridge.enroll(address, pin, new ArtLightBridge.ResponseCallback() {
             @Override
             public void onResult(String reply) {
                 if ("ENROLLED".equals(reply)) {
                     pinsByUuid.remove(uuid);
+                    markEverAuthorized(uuid);
                     notifyState(uuid, "authorized", null);
                 } else if ("PENDING".equals(reply)) {
                     notifyState(uuid, "pending", pin);
-                    if (attemptsLeft > 1) {
-                        handler.postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
-                                enrollWithRetries(uuid, address, pin, attemptsLeft - 1);
-                            }
-                        }, RETRY_MS);
-                    }
+                    final long next = Math.min(delayMs * 2, MAX_RETRY_MS);
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            enrollWithRetries(uuid, address, pin, next);
+                        }
+                    }, delayMs);
                 } else if ("DENIED".equals(reply)) {
                     // PIN matters only while pending; drop it so a later
                     // re-request starts fresh (desktop parity).

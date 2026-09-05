@@ -88,44 +88,100 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
     }
 
     /**
-     * v10: paint the right-column stat blocks (RTT / GPU / NET) on the card
-     * bound to this host. Values may be null — a null hides its block and,
-     * if ALL are null, the whole stats column hides. Never faked.
+     * v11: paint the card's LAST SESSION panel (desktop HostStage parity).
+     * snapshot == null hides the whole panel; a -1 metric renders as \u2014
+     * (never folded to 0); an empty grade hides the grade line.
      */
-    public void updateStatsByUuid(String uuid, Integer rttMs, Integer gpuPercent, Integer netMbps) {
+    public void updateLastSessionByUuid(String uuid, String ago, String duration,
+                                        String grade, int rttMs, int hostLatMs,
+                                        double dropsPct) {
         View v = boundViews.get(uuid);
         if (v == null) {
             return;
         }
-        android.view.View col = v.findViewById(R.id.am_stats_col);
-        if (col == null) {
+        View panel = v.findViewById(R.id.am_last_session);
+        if (panel == null) {
             return;
         }
-        boolean any = false;
-        any |= bindStat(v, R.id.am_stat_rtt_group, R.id.am_stat_rtt_value,
-                rttMs == null ? null : rttMs + " ms");
-        any |= bindStat(v, R.id.am_stat_gpu_group, R.id.am_stat_gpu_value,
-                gpuPercent == null ? null : gpuPercent + "%");
-        any |= bindStat(v, R.id.am_stat_net_group, R.id.am_stat_net_value,
-                netMbps == null ? null : netMbps + "Mb/s");
-        col.setVisibility(any ? View.VISIBLE : View.GONE);
+        if (ago == null) {
+            panel.setVisibility(View.GONE);
+            return;
+        }
+        bindText(v, R.id.am_last_session_when,
+                duration == null || duration.isEmpty() ? ago : ago + " · " + duration);
+        TextView gradeTv = v.findViewById(R.id.am_last_session_grade);
+        if (gradeTv != null) {
+            if (grade == null || grade.isEmpty()) {
+                gradeTv.setVisibility(View.GONE);
+            } else {
+                gradeTv.setText(grade);
+                gradeTv.setVisibility(View.VISIBLE);
+            }
+        }
+        bindText(v, R.id.am_last_session_rtt, rttMs < 0 ? "\u2014" : rttMs + " ms");
+        bindText(v, R.id.am_last_session_hostlat, hostLatMs < 0 ? "\u2014" : hostLatMs + " ms");
+        bindText(v, R.id.am_last_session_drops,
+                dropsPct < 0 ? "\u2014" : String.format(java.util.Locale.US, "%.1f%%", dropsPct));
+        panel.setVisibility(View.VISIBLE);
     }
 
-    private static boolean bindStat(View parent, int groupId, int valueId, String value) {
-        android.view.View group = parent.findViewById(groupId);
-        if (group == null) {
-            return false;
+    /**
+     * v11: HOST LINK — the STATUS NIC-speed reply, desktop-formatted
+     * ("1000" -> "1 Gbps"). link == null hides the block.
+     */
+    public void updateHostLinkByUuid(String uuid, String link) {
+        View v = boundViews.get(uuid);
+        if (v == null) {
+            return;
         }
-        if (value == null) {
-            group.setVisibility(View.GONE);
-            return false;
+        View box = v.findViewById(R.id.am_host_link_box);
+        if (box == null) {
+            return;
         }
-        TextView tv = parent.findViewById(valueId);
+        if (link == null) {
+            box.setVisibility(View.GONE);
+            return;
+        }
+        TextView tv = v.findViewById(R.id.am_host_link_value);
+        if (tv != null) {
+            tv.setText(link);
+        }
+        box.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * v11: ArtLight Authorised chip (desktop auth badge parity). State comes
+     * from HostAuthManager — none/open/pending/authorized/denied. The chip
+     * shows only for authorized (green) and pending (amber); every other
+     * state hides it.
+     */
+    public void updateAuthStateByUuid(String uuid, String state) {
+        View v = boundViews.get(uuid);
+        if (v == null) {
+            return;
+        }
+        View chip = v.findViewById(R.id.am_auth_chip);
+        if (chip == null) {
+            return;
+        }
+        boolean authorized = "authorized".equals(state);
+        boolean pending = "pending".equals(state);
+        if (!authorized && !pending) {
+            chip.setVisibility(View.GONE);
+            return;
+        }
+        TextView label = v.findViewById(R.id.am_auth_label);
+        if (label != null) {
+            label.setText(authorized ? R.string.am_hero_auth : R.string.am_auth_pending);
+        }
+        chip.setVisibility(View.VISIBLE);
+    }
+
+    private static void bindText(View parent, int viewId, String value) {
+        TextView tv = parent.findViewById(viewId);
         if (tv != null) {
             tv.setText(value);
         }
-        group.setVisibility(View.VISIBLE);
-        return true;
     }
 
     public boolean removeComputer(PcView.ComputerObject computer) {

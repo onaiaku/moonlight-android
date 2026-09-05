@@ -124,7 +124,8 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
 
     private io.github.onaiaku.artmoon.artlight.HostMetricsPoller metricsPoller;
     private io.github.onaiaku.artmoon.artlight.HostAuthManager authManager;
-    private final java.util.HashSet<String> authProbedUuids = new java.util.HashSet<>();
+    private final java.util.HashMap<String, Long> lastAutoProbeAtMs = new java.util.HashMap<>();
+    private static final long AUTO_REPROBE_COOLDOWN_MS = 60000L;
     private android.app.Dialog authPinDialog;
 
     private void initializeViews() {
@@ -186,6 +187,40 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
         // it on Fire TV.
         if (getPackageManager().hasSystemFeature("amazon.hardware.fire_tv")) {
             helpButton.setVisibility(View.GONE);
+        }
+
+        // Footer keycaps (render parity): P Shutdown / S Settings / Esc Exit are
+        // real controls, wired to the same flows the keycaps name. Null-safe per
+        // layout — whichever orientation carries them gets them functional.
+        View footerShutdown = findViewById(R.id.am_footer_shutdown);
+        if (footerShutdown != null) {
+            footerShutdown.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    ComputerObject hero = getHeroComputer();
+                    if (hero != null) {
+                        doArtLightPowerMenu(hero.details);
+                    }
+                }
+            });
+        }
+        View footerSettings = findViewById(R.id.am_footer_settings);
+        if (footerSettings != null) {
+            footerSettings.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    startActivity(new Intent(PcView.this, StreamSettings.class));
+                }
+            });
+        }
+        View footerExit = findViewById(R.id.am_footer_exit);
+        if (footerExit != null) {
+            footerExit.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    finishAffinity();
+                }
+            });
         }
 
         getFragmentManager().beginTransaction()
@@ -757,10 +792,57 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
                 } else if ("authorized".equals(state) || "denied".equals(state) || "none".equals(state)) {
                     dismissAuthPinDialog();
                 }
+                // Paint the card's ArtLight Authorised chip from the real state.
+                pcGridAdapter.updateAuthStateByUuid(uuid, state);
                 // "open" needs no UI — the integration simply works.
             }
         });
         authManager.probe(details.uuid, address);
+    }
+
+    /**
+     * Silent background re-probe of a previously-paired host's ArtLight auth
+     * state (desktop parity: the access probe runs without user action).
+     * Runs at most once per host per app session; retried on the next host
+     * update if the host wasn't answering. The listener here never shows the
+     * PIN popup — if the host no longer knows us ("pending"), the chip hides
+     * and the user re-pairs manually via long-press.
+     */
+    private void maybeAutoReprobeArtLight(final io.github.onaiaku.artmoon.nvstream.http.ComputerDetails details) {
+        if (authManager == null) {
+            authManager = new io.github.onaiaku.artmoon.artlight.HostAuthManager(this);
+        }
+        final String uuid = details.uuid;
+        // Only ever-authorized hosts: probing an unpaired host would make it
+        // pop its "allow this device?" prompt uninvited. Cooldown keeps an
+        // unreachable paired host from being probed every poll cycle.
+        long now = android.os.SystemClock.elapsedRealtime();
+        Long lastProbe = lastAutoProbeAtMs.get(uuid);
+        if (!authManager.isEverAuthorized(uuid) ||
+            (lastProbe != null && now - lastProbe < AUTO_REPROBE_COOLDOWN_MS)) {
+            return;
+        }
+        if (details.state == io.github.onaiaku.artmoon.nvstream.http.ComputerDetails.State.OFFLINE ||
+            details.state == io.github.onaiaku.artmoon.nvstream.http.ComputerDetails.State.UNKNOWN) {
+            return;
+        }
+        final String address = details.activeAddress != null ? details.activeAddress.address :
+                details.localAddress != null ? details.localAddress.address :
+                details.remoteAddress != null ? details.remoteAddress.address : null;
+        if (address == null) {
+            return;
+        }
+        lastAutoProbeAtMs.put(uuid, now);
+        authManager.setListener(uuid, new io.github.onaiaku.artmoon.artlight.HostAuthManager.Listener() {
+            @Override
+            public void onAuthState(String u, String state, String pin) {
+                // Silent: chip repaint only, never showAuthPinDialog. A "pending"
+                // here means the host no longer knows us — the chip hides and
+                // the user re-pairs manually via long-press.
+                pcGridAdapter.updateAuthStateByUuid(u, state);
+            }
+        });
+        authManager.probe(uuid, address);
     }
 
     /**
@@ -915,6 +997,12 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
         // first (sorted) host — the render's center pill carries the
         // selected host's name.
         updatePickerHostPill();
+
+        // Desktop parity (HomeScreen.qml hostProbes): silently re-check the
+        // ArtLight auth state of hosts we've paired with before, so the
+        // Authorised chip repaints itself on app open. Never touches hosts
+        // we haven't paired — no unprompted allow-requests.
+        maybeAutoReprobeArtLight(details);
     }
 
     /**
@@ -939,6 +1027,24 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
     @Override
     public int getAdapterFragmentLayoutId() {
         return R.layout.pc_grid_view;
+    }
+
+    /**
+     * The hero card's host: first ONLINE entry, else the first entry. Used by
+     * the footer Shutdown keycap (P) — desktop's power dialog targets the
+     * selected host; the phone's selected host is the hero card.
+     */
+    private ComputerObject getHeroComputer() {
+        if (pcGridAdapter.getCount() == 0) {
+            return null;
+        }
+        for (int i = 0; i < pcGridAdapter.getCount(); i++) {
+            ComputerObject c = pcGridAdapter.getItem(i);
+            if (c != null && c.details.state == ComputerDetails.State.ONLINE) {
+                return c;
+            }
+        }
+        return pcGridAdapter.getItem(0);
     }
 
     /**

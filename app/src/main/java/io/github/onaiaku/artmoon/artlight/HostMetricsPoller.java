@@ -11,12 +11,13 @@ import io.github.onaiaku.artmoon.nvstream.http.ComputerDetails;
 import org.json.JSONObject;
 
 /**
- * HostMetricsPoller — Android port of the desktop's HostMetricsPoller.
- * Polls STATS from ArtLight hosts (via ArtLightBridge) and paints the
- * live-metrics line on the matching host hero card. Port 47998 hosts only;
- * unreachable hosts simply keep the telemetry line hidden.
- *
- * Desktop parity: GPU %, encoder %, temp, VRAM used, CPU %, net TX.
+ * HostMetricsPoller — Android port of the desktop's per-host probes.
+ * Polls LASTSESSION and STATUS from ArtLight hosts (via ArtLightBridge,
+ * port 47998) and paints the hero card's LAST SESSION panel and HOST LINK
+ * number — the desktop card's actual right-column contents. Hosts with no
+ * session history keep the panel hidden; unreachable hosts hide everything.
+ * No live stats are invented: desktop shows RTT/Host-lat./Drops only from a
+ * real session's telemetry.
  */
 public class HostMetricsPoller {
 
@@ -100,102 +101,124 @@ public class HostMetricsPoller {
         }
 
         final PollTarget tgt = target;
-        // v10: RTT = round-trip time of this very STATS request — a real,
-        // measured number, not a placeholder.
-        final long sentAtNanos = android.os.SystemClock.elapsedRealtimeNanos();
-        bridge.requestStats(tgt.address, new ArtLightBridge.ResponseCallback() {
+
+        // Desktop parity (HostStage.qml right column): the card's right side is
+        // the LAST SESSION panel fed by the host's LASTSESSION command —
+        // ago/duration/grade/rtt/host-lat/drops. Hidden when the host has no
+        // last session; fields the host never measured render as \u2014.
+        bridge.requestLastSession(tgt.address, new ArtLightBridge.ResponseCallback() {
             @Override
             public void onResult(final String response) {
-                pollInFlight = false;
-                final long rttMs = (android.os.SystemClock.elapsedRealtimeNanos() - sentAtNanos) / 1_000_000L;
-                final StatsSnapshot snap = parseStats(response, rttMs);
+                final LastSessionSnapshot snap = parseLastSession(response);
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
                         if (!running) {
                             return;
                         }
-                        adapter.updateStatsByUuid(tgt.uuid, snap.rttMs, snap.gpuPercent, snap.netMbps);
+                        adapter.updateLastSessionByUuid(
+                                tgt.uuid,
+                                snap == null ? null : snap.ago,
+                                snap == null ? null : snap.duration,
+                                snap == null ? null : snap.grade,
+                                snap == null ? -1 : snap.rttMs,
+                                snap == null ? -1 : snap.hostLatMs,
+                                snap == null ? -1 : snap.dropsPct);
+                    }
+                });
+            }
+        });
+
+        // HOST LINK: STATUS replies with the host NIC speed in Mbps (raw
+        // number, e.g. "1000"); formatted exactly like the desktop's
+        // formatStreamTweakStatus -> formatMbpsShort ("1000" -> "1 Gbps").
+        bridge.requestStatus(tgt.address, new ArtLightBridge.ResponseCallback() {
+            @Override
+            public void onResult(final String status) {
+                final String link = formatMbpsShort(status);
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (!running) {
+                            return;
+                        }
+                        adapter.updateHostLinkByUuid(tgt.uuid, link);
                     }
                 });
             }
         });
     }
 
-    /** Per-poll telemetry values for the hero card's right column. */
-    private static final class StatsSnapshot {
-        final String summaryLine;
-        final Integer rttMs;
-        final Integer gpuPercent;
-        final Integer netMbps;
-
-        StatsSnapshot(String summaryLine, Integer rttMs, Integer gpuPercent, Integer netMbps) {
-            this.summaryLine = summaryLine;
-            this.rttMs = rttMs;
-            this.gpuPercent = gpuPercent;
-            this.netMbps = netMbps;
-        }
-    }
-
     /**
-     * v10: extract the right-column numbers (RTT measured, GPU% + NET from
-     * the live STATS payload). Any value the host doesn't provide stays
-     * null and its block hides — never faked.
+     * Desktop formatStreamTweakStatus/formatMbpsShort: "1000" -> "1 Gbps",
+     * "600" -> "600 Mbps"; empty/unparseable/ERR -> null (the block hides).
      */
-    private static StatsSnapshot parseStats(String json, long rttMs) {
-        Integer gpu = null;
-        Integer net = null;
-        if (json != null && !json.isEmpty() && !"STATS_UNAVAILABLE".equals(json)) {
-            try {
-                JSONObject o = new JSONObject(json);
-                int g = o.optInt("gpu", -1);
-                if (g >= 0) {
-                    gpu = g;
-                }
-                if (o.has("net_tx")) {
-                    net = o.optInt("net_tx", 0);
-                }
-            } catch (Exception e) {
-                LimeLog.info("HostMetricsPoller: stats parse failed: " + e.getMessage());
+    private static String formatMbpsShort(String raw) {
+        if (raw == null || raw.isEmpty() || raw.startsWith("ERR")) {
+            return null;
+        }
+        try {
+            long mbps = Long.parseLong(raw.trim());
+            if (mbps <= 0) {
+                return null;
             }
+            if (mbps >= 1000) {
+                double gbps = mbps / 1000.0;
+                String num = (gbps == Math.floor(gbps))
+                        ? String.valueOf((long) gbps) : String.format(java.util.Locale.US, "%.1f", gbps);
+                return num + " Gbps";
+            }
+            return mbps + " Mbps";
+        } catch (NumberFormatException e) {
+            return null;
         }
-        return new StatsSnapshot(formatStats(json, null), (int) rttMs, gpu, net);
     }
 
     /**
-     * One-line summary for the hero card, desktop's fields:
-     * GPU 45% · ENC 80% · 72°C · VRAM 4.2G · CPU 30% · NET 18Mb/s
-     * Empty string on error/unreachable — the line hides, never fakes data.
+     * Desktop ComputerModel::requestLastSession reply mapping:
+     * has/ago/duration/grade/rtt_ms/host_latency_ms/drops_pct. A -1 means
+     * the host never measured it and renders as \u2014 — never folded to 0.
      */
-    private static String formatStats(String json, String hostName) {
-        if (json == null || json.isEmpty() || "STATS_UNAVAILABLE".equals(json)) {
-            return "";
+    private static LastSessionSnapshot parseLastSession(String json) {
+        if (json == null || json.isEmpty() || json.startsWith("ERR")
+                || "STATS_UNAVAILABLE".equals(json)) {
+            return null;
         }
         try {
             JSONObject o = new JSONObject(json);
-            StringBuilder sb = new StringBuilder();
-            append(sb, "GPU ", o.optInt("gpu", -1), "%", true);
-            append(sb, " · ENC ", o.optInt("gpu_enc", -1), "%", true);
-            append(sb, " · ", o.optInt("gpu_temp", -1), "°C", true);
-            if (o.has("vram_used")) {
-                long vram = o.optLong("vram_used", 0);
-                sb.append(" · VRAM ").append(String.format("%.1fG", vram / 1000.0));
+            if (!o.optBoolean("has", false)) {
+                return null;
             }
-            append(sb, " · CPU ", o.optInt("cpu", -1), "%", true);
-            if (o.has("net_tx")) {
-                sb.append(" · NET ").append(o.optInt("net_tx", 0)).append("Mb/s");
-            }
-            return sb.toString();
+            return new LastSessionSnapshot(
+                    o.optString("ago", ""),
+                    o.optString("duration", ""),
+                    o.optBoolean("has_grade", false) ? o.optString("grade", "") : "",
+                    o.optInt("rtt_ms", -1),
+                    o.optInt("host_latency_ms", -1),
+                    o.optDouble("drops_pct", -1));
         } catch (Exception e) {
-            LimeLog.info("HostMetricsPoller: stats parse failed: " + e.getMessage());
-            return "";
+            LimeLog.info("HostMetricsPoller: lastsession parse failed: " + e.getMessage());
+            return null;
         }
     }
 
-    private static void append(StringBuilder sb, String prefix, int value, String suffix, boolean skipIfMissing) {
-        if (value < 0 && skipIfMissing) {
-            return;
+    /** Per-poll LAST SESSION values for the hero card's right column. */
+    private static final class LastSessionSnapshot {
+        final String ago;
+        final String duration;
+        final String grade;
+        final int rttMs;
+        final int hostLatMs;
+        final double dropsPct;
+
+        LastSessionSnapshot(String ago, String duration, String grade,
+                            int rttMs, int hostLatMs, double dropsPct) {
+            this.ago = ago;
+            this.duration = duration;
+            this.grade = grade;
+            this.rttMs = rttMs;
+            this.hostLatMs = hostLatMs;
+            this.dropsPct = dropsPct;
         }
-        sb.append(prefix).append(value).append(suffix);
     }
 }

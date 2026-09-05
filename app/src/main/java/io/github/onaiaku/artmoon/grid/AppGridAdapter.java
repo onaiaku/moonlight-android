@@ -176,8 +176,16 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
 
     @Override
     public void populateView(View parentView, ImageView imgView, ProgressBar prgView, TextView txtView, ImageView overlayView, AppView.AppObject obj) {
-        // Let the cached asset loader handle it
+        // Let the cached asset loader handle the art, then FORCE the row's own
+        // name visible. The shared loader was built for the TV poster grid, where
+        // the name only shows when art falls back to a placeholder — in this list
+        // row (thumb + title beside it) the title must ALWAYS show, whatever the
+        // art state, and the indeterminate spinner must never linger: a visible
+        // spinner on every row read as "constantly refreshing each app".
         loader.populateImageView(obj.app, imgView, txtView);
+        prgView.setVisibility(View.GONE);
+        txtView.setText(obj.app.getAppName());
+        txtView.setVisibility(View.VISIBLE);
 
         // ArtLight store badge (Steam / Epic / …) when the host reported one
         TextView storeBadge = parentView.findViewById(R.id.am_store_badge);
