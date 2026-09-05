@@ -1,36 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!--
-    ArtMoon Android theme tokens.
-
-    Ported 1:1 from the ArtMoon desktop client's theme.cpp — same maths, same values.
-    The desktop's ground is near-black #06080A with 4% of the accent blended in;
-    with the logo navy accent #102A44 that blend evaluates to #06090C.
-    The online green stays a *semantic* colour only: the desktop deliberately keeps
-    the accent from meaning "online", because a colour that says two things says neither.
--->
+<!-- ArtMoon token set (desktop theme.cpp port). Accent = logo navy #102A44. -->
 <resources>
-    <!-- The accent: ArtMoon logo navy (desktop DefaultAccent). -->
     <color name="am_accent">#102A44</color>
+    <!-- Accent lifted one step: primary buttons, focus glow, selected row. -->
+    <color name="am_accent_hi">#24345A</color>
     <!-- Accent at 16% alpha (desktop accentSoft()). -->
     <color name="am_accent_soft">#29102A44</color>
     <!-- Ground: #06080A blended 4% toward the accent (desktop ground()). -->
     <color name="am_ground">#06090C</color>
-    <!-- Elevated surfaces: ground lifted two steps, hue-neutral. -->
     <color name="am_surface">#0D1117</color>
     <color name="am_surface_high">#161C26</color>
-    <!-- Borders/dividers on dark ground. -->
     <color name="am_border">#232B38</color>
-    <color name="am_border_strong">#2E3947</color>
+    <color name="am_border_high">#2E3947</color>
     <!-- Text hierarchy. -->
     <color name="am_text_primary">#FFFFFF</color>
     <color name="am_text_secondary">#B8C2CF</color>
-    <color name="am_text_disabled">#5C6875</color>
+    <color name="am_text_tertiary">#5C6875</color>
     <!-- Semantic colours: never the accent. -->
     <color name="am_online">#2ECC71</color>
     <color name="am_offline">#E74C3C</color>
     <color name="am_pairing">#F39C12</color>
-    <!-- On-accent text: white, as the desktop's onAccent() resolves for this navy. -->
+    <!-- ArtLight authorized badge blue (distinct from the navy accent). -->
+    <color name="am_auth">#3D7BFF</color>
+    <!-- On-accent text (desktop onAccent()). -->
     <color name="am_on_accent">#FFFFFF</color>
     <!-- Ripple that reads on the navy accent. -->
     <color name="am_ripple">#3D4E63</color>
+    <!-- Telemetry bar track (white @ 14%). -->
+    <color name="am_bar_track">#24FFFFFF</color>
 </resources>

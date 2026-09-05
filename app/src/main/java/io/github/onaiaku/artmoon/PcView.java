@@ -119,6 +119,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
     private final static int FULL_APP_LIST_ID = 9;
     private final static int TEST_NETWORK_ID = 10;
     private final static int GAMESTREAM_EOL_ID = 11;
+    private final static int POWER_ID = 12;
 
     private void initializeViews() {
         setContentView(R.layout.activity_pc_view);
@@ -185,6 +186,7 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        OrientationHelper.lockPortraitOnPhones(this);
 
         // Assume we're in the foreground when created to avoid a race
         // between binding to CMS and onResume()
@@ -249,6 +251,10 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
         // Only allow polling to start if we're bound to CMS, polling is not already running,
         // and our activity is in the foreground.
         if (managerBinder != null && !runningPolling && inForeground) {
+            if (metricsPoller == null) {
+                metricsPoller = new io.github.onaiaku.artmoon.artlight.HostMetricsPoller(this, pcGridAdapter);
+            }
+            metricsPoller.start();
             freezeUpdates = false;
             managerBinder.startPolling(new ComputerManagerListener() {
                 @Override
@@ -273,6 +279,9 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
     }
 
     private void stopComputerUpdates(boolean wait) {
+        if (metricsPoller != null) {
+            metricsPoller.stop();
+        }
         if (managerBinder != null) {
             if (!runningPolling) {
                 return;
@@ -293,6 +302,14 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
     @Override
     public void onDestroy() {
         super.onDestroy();
+
+        if (authPinDialog != null) {
+            try {
+                authPinDialog.dismiss();
+            } catch (Exception ignored) {
+            }
+            authPinDialog = null;
+        }
 
         if (managerBinder != null) {
             unbindService(serviceConnection);
@@ -377,6 +394,10 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
             }
 
             menu.add(Menu.NONE, FULL_APP_LIST_ID, 4, getResources().getString(R.string.pcview_menu_app_list));
+
+            // ArtLight: signed power actions (SHUTDOWN / SHUTDOWN_UPDATE) via
+            // ArtLightBridge. Destructive — confirm dialog before firing.
+            menu.add(Menu.NONE, POWER_ID, 5, getResources().getString(R.string.am_power_menu));
         }
 
         menu.add(Menu.NONE, TEST_NETWORK_ID, 5, getResources().getString(R.string.pcview_menu_test_network));
@@ -675,11 +696,134 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
                 HelpLauncher.launchGameStreamEolFaq(PcView.this);
                 return true;
 
+            case POWER_ID:
+                AdapterContextMenuInfo info =
+                        (AdapterContextMenuInfo) item.getMenuInfo();
+                if (info != null) {
+                    ComputerObject pc = (ComputerObject) pcGridAdapter.getItem(info.position);
+                    doArtLightPowerMenu(pc.details);
+                }
+                return true;
+
             default:
                 return super.onContextItemSelected(item);
         }
     }
     
+    // ── ArtLight Control enrollment (approved-client flow) ──────────────────
+
+    private void probeArtLightAuth(final io.github.onaiaku.artmoon.nvstream.http.ComputerDetails details) {
+        if (authManager == null) {
+            authManager = new io.github.onaiaku.artmoon.artlight.HostAuthManager(this);
+        }
+        final String address = details.activeAddress != null ? details.activeAddress.address :
+                details.remoteAddress != null ? details.remoteAddress.address :
+                details.localAddress != null ? details.localAddress.address : null;
+        if (address == null) {
+            return;
+        }
+        authManager.setListener(details.uuid, new io.github.onaiaku.artmoon.artlight.HostAuthManager.Listener() {
+            @Override
+            public void onAuthState(String uuid, String state, String pin) {
+                if ("pending".equals(state) && pin != null && !pin.isEmpty()) {
+                    showAuthPinDialog(details, pin);
+                } else if ("authorized".equals(state) || "denied".equals(state) || "none".equals(state)) {
+                    dismissAuthPinDialog();
+                }
+                // "open" needs no UI — the integration simply works.
+            }
+        });
+        authManager.probe(details.uuid, address);
+    }
+
+    /**
+     * The Control pairing popup: "ArtLight on <host> is asking to allow this
+     * device" with the 4-digit PIN in large monospace, matching the desktop's
+     * stPinDialog. Dismissable; auto-closes when the host approves us.
+     */
+    private void showAuthPinDialog(final io.github.onaiaku.artmoon.nvstream.http.ComputerDetails details,
+                                   final String pin) {
+        if (authPinDialog != null && authPinDialog.isShowing()) {
+            return; // already up; host re-polls keep the same PIN while pending
+        }
+        final String hostAddr = details.activeAddress != null ? details.activeAddress.address : "";
+        android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(this);
+        b.setTitle(getResources().getString(R.string.am_auth_title));
+        b.setMessage(getResources().getString(R.string.am_auth_message,
+                details.name, hostAddr));
+        b.setView(buildAuthPinView(pin));
+        b.setNegativeButton(android.R.string.cancel, new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface dialog, int which) {
+                authPinDialog = null;
+            }
+        });
+        authPinDialog = b.show();
+    }
+
+    private android.view.View buildAuthPinView(String pin) {
+        android.widget.TextView tv = new android.widget.TextView(this);
+        tv.setText(pin);
+        tv.setTextSize(52);
+        tv.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
+        tv.setLetterSpacing(0.25f);
+        tv.setTextAlignment(android.view.View.TEXT_ALIGNMENT_CENTER);
+        tv.setPadding(0, 24, 0, 24);
+        tv.setTextColor(getResources().getColor(R.color.am_accent_hi));
+        return tv;
+    }
+
+    private void dismissAuthPinDialog() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (authPinDialog != null) {
+                    try {
+                        authPinDialog.dismiss();
+                    } catch (Exception ignored) {
+                    }
+                    authPinDialog = null;
+                }
+            }
+        });
+    }
+
+    /**
+     * ArtLight power actions — mirrors the desktop's PowerDialog: Shut down,
+     * or Update and shut down (installs pending updates first). Destructive:
+     * confirm dialog, then AUTH1-signed SHUTDOWN(_UPDATE) via ArtLightBridge.
+     */
+    private void doArtLightPowerMenu(ComputerDetails details) {
+        if (details == null) {
+            return;
+        }
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.am_power_menu)
+                .setMessage(R.string.am_power_confirm)
+                .setPositiveButton(R.string.am_power_shutdown, new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        new io.github.onaiaku.artmoon.artlight.ArtLightBridge(PcView.this)
+                                .sendShutdown(details.activeAddress != null ? details.activeAddress.address
+                                              : details.remoteAddress != null ? details.remoteAddress.address
+                                              : details.localAddress.address);
+                        Toast.makeText(PcView.this, getResources().getString(R.string.am_power_sent), Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNeutralButton(R.string.am_power_update_shutdown, new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        new io.github.onaiaku.artmoon.artlight.ArtLightBridge(PcView.this)
+                                .sendShutdownUpdate(details.activeAddress != null ? details.activeAddress.address
+                                              : details.remoteAddress != null ? details.remoteAddress.address
+                                              : details.localAddress.address);
+                        Toast.makeText(PcView.this, getResources().getString(R.string.am_power_sent), Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     private void removeComputer(ComputerDetails details) {
         managerBinder.removeComputer(details);
 
@@ -735,6 +879,12 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
 
             // Remove the "Discovery in progress" view
             noPcFoundLayout.setVisibility(View.INVISIBLE);
+        }
+
+        // ArtLight: probe newly-seen online hosts for Control enrollment state
+        if (details.state == ComputerDetails.State.ONLINE &&
+                authProbedUuids.add(details.uuid)) {
+            probeArtLightAuth(details);
         }
 
         // Notify the view that the data has changed

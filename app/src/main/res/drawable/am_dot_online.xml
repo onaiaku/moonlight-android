@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Online status dot (semantic green — never the accent). -->
+<!-- Online status dot (semantic green). -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
     <solid android:color="@color/am_online" />
     <size android:width="8dp" android:height="8dp" />

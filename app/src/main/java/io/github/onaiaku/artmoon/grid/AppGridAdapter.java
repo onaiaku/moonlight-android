@@ -37,6 +37,7 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
     private CachedAppAssetLoader loader;
     private Set<Integer> hiddenAppIds = new HashSet<>();
     private ArrayList<AppView.AppObject> allApps = new ArrayList<>();
+    private java.util.HashMap<String, String> storeMap = new java.util.HashMap<>();
 
     public AppGridAdapter(Context context, PreferenceConfiguration prefs, ComputerDetails computer, String uniqueId, boolean showHiddenApps) {
         super(context, getLayoutIdForPreferences(prefs));
@@ -121,6 +122,19 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
         loader.freeCacheMemory();
     }
 
+    /**
+     * ArtLight integration: receive the host's app -> store map (APPSTORES
+     * command via ArtLightBridge) and refresh the badge chips on rows.
+     */
+    public void setStoreMap(java.util.HashMap<String, String> map) {
+        this.storeMap = (map != null) ? map : new java.util.HashMap<>();
+        notifyDataSetChanged();
+    }
+
+    private String storeFor(String appName) {
+        return storeMap.get(appName);
+    }
+
     private static void sortList(List<AppView.AppObject> list) {
         Collections.sort(list, new Comparator<AppView.AppObject>() {
             @Override
@@ -164,6 +178,18 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
     public void populateView(View parentView, ImageView imgView, ProgressBar prgView, TextView txtView, ImageView overlayView, AppView.AppObject obj) {
         // Let the cached asset loader handle it
         loader.populateImageView(obj.app, imgView, txtView);
+
+        // ArtLight store badge (Steam / Epic / …) when the host reported one
+        TextView storeBadge = parentView.findViewById(R.id.am_store_badge);
+        if (storeBadge != null) {
+            String store = storeFor(obj.app.getAppName());
+            if (store != null && !store.isEmpty()) {
+                storeBadge.setText(store);
+                storeBadge.setVisibility(View.VISIBLE);
+            } else {
+                storeBadge.setVisibility(View.GONE);
+            }
+        }
 
         if (obj.isRunning) {
             // Show the play button overlay

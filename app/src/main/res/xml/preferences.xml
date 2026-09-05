@@ -284,4 +284,11 @@
             android:summary="@string/summary_privacy_policy"
             url="https://moonlight-stream.org/privacy.html"/>
     </PreferenceCategory-->
+    <PreferenceCategory title="@string/am_artlight_title"
+        key="am_artlight_category">
+        <Preference
+            android:key="am_artlight_entry"
+            android:title="@string/am_artlight_title"
+            android:summary="@string/am_artlight_entry_summary" />
+    </PreferenceCategory>
 </PreferenceScreen>

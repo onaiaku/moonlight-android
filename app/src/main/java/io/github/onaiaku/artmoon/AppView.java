@@ -116,6 +116,52 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
 
                     appGridAdapter.updateHiddenApps(hiddenAppIds, true);
 
+                    // ArtLight integration: fetch the host's app -> store map
+                    // and feed it to the adapter for the badge chips. Best
+                    // effort — empty map on unreachable/older hosts.
+                    final AppGridAdapter adapterForStores = appGridAdapter;
+                    // Prefer the active (reachable) address; fall back through
+                    // remote/local/manual like the rest of the client does.
+                    final String hostAddress = (computer.activeAddress != null) ? computer.activeAddress.address :
+                            (computer.remoteAddress != null) ? computer.remoteAddress.address :
+                            (computer.localAddress != null) ? computer.localAddress.address :
+                            (computer.manualAddress != null) ? computer.manualAddress.address : null;
+                    if (hostAddress != null) {
+                        new Thread() {
+                        @Override
+                        public void run() {
+                            io.github.onaiaku.artmoon.artlight.ArtLightBridge bridge =
+                                    new io.github.onaiaku.artmoon.artlight.ArtLightBridge(AppView.this);
+                            bridge.requestAppStores(hostAddress, new io.github.onaiaku.artmoon.artlight.ArtLightBridge.ResponseCallback() {
+                                @Override
+                                public void onResult(final String response) {
+                                    if (response == null || response.isEmpty()) {
+                                        return;
+                                    }
+                                    try {
+                                        org.json.JSONObject obj = new org.json.JSONObject(response);
+                                        final java.util.HashMap<String, String> map = new java.util.HashMap<>();
+                                        java.util.Iterator<String> keys = obj.keys();
+                                        while (keys.hasNext()) {
+                                            String key = keys.next();
+                                            map.put(key, obj.optString(key));
+                                        }
+                                        runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                adapterForStores.setStoreMap(map);
+                                            }
+                                        });
+                                    } catch (Exception e) {
+                                        io.github.onaiaku.artmoon.LimeLog.info(
+                                                "APPSTORES parse failed: " + e.getMessage());
+                                    }
+                                }
+                            });
+                        }
+                        }.start();
+                    }
+
                     // Now make the binder visible. We must do this after appGridAdapter
                     // is set to prevent us from reaching updateUiWithServerinfo() and
                     // touching the appGridAdapter prior to initialization.
@@ -283,6 +329,7 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        OrientationHelper.lockPortraitOnPhones(this);
 
         // Assume we're in the foreground when created to avoid a race
         // between binding to CMS and onResume()
@@ -458,14 +505,14 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
                 UiHelper.displayQuitConfirmationDialog(this, new Runnable() {
                     @Override
                     public void run() {
-                        ServerHelper.doStart(AppView.this, app.app, computer, managerBinder);
+                        ServerHelper.doStartWithCurtain(AppView.this, app.app, computer, managerBinder);
                     }
                 }, null);
                 return true;
 
             case START_OR_RESUME_ID:
                 // Resume is the same as start for us
-                ServerHelper.doStart(AppView.this, app.app, computer, managerBinder);
+                ServerHelper.doStartWithCurtain(AppView.this, app.app, computer, managerBinder);
                 return true;
 
             case QUIT_ID:
@@ -649,7 +696,7 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
                 if (lastRunningAppId != 0) {
                     openContextMenu(arg1);
                 } else {
-                    ServerHelper.doStart(AppView.this, app.app, computer, managerBinder);
+                    ServerHelper.doStartWithCurtain(AppView.this, app.app, computer, managerBinder);
                 }
             }
         });

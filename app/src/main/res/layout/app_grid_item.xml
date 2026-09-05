@@ -58,14 +58,32 @@
         android:layout_marginLeft="14dp"
         android:textSize="16sp"
         android:textStyle="bold"
-        android:textColor="@color/***"
+        android:textColor="@color/am_text_primary"
         android:maxLines="2"
         android:ellipsize="end" />
+    <TextView
+        android:id="@+id/am_store_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginLeft="8dp"
+        android:background="@drawable/am_badge"
+        android:paddingStart="8dp"
+        android:paddingLeft="8dp"
+        android:paddingEnd="8dp"
+        android:paddingRight="8dp"
+        android:paddingTop="3dp"
+        android:paddingBottom="3dp"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:textColor="@color/am_text_secondary"
+        android:maxLines="1"
+        android:visibility="gone" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="›"
         android:textSize="22sp"
-        android:textColor="@color/***" />
+        android:textColor="@color/am_text_tertiary" />
 </LinearLayout>

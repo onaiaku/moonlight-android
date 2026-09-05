@@ -57,6 +57,7 @@ public class StreamSettings extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        OrientationHelper.lockPortraitOnPhones(this);
 
         previousPrefs = PreferenceConfiguration.readPreferences(this);
 
@@ -282,6 +283,22 @@ public class StreamSettings extends Activity {
                 PreferenceCategory category =
                         (PreferenceCategory) findPreference("category_onscreen_controls");
                 screen.removePreference(category);
+            }
+
+            // ArtLight settings tab (desktop parity): status page for the
+            // ArtLight host integration.
+            Preference artLightEntry = findPreference("am_artlight_entry");
+            if (artLightEntry != null) {
+                artLightEntry.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                    @Override
+                    public boolean onPreferenceClick(Preference preference) {
+                        android.content.Intent intent =
+                                new android.content.Intent(getActivity(),
+                                        io.github.onaiaku.artmoon.artlight.ArtLightActivity.class);
+                        startActivity(intent);
+                        return true;
+                    }
+                });
             }
 
             // Hide remote desktop mouse mode on pre-Oreo (which doesn't have pointer capture)

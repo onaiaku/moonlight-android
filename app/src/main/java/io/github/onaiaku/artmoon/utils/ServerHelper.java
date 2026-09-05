@@ -83,6 +83,89 @@ public class ServerHelper {
         parent.startActivity(createStartIntent(parent, app, computer, managerBinder));
     }
 
+    /**
+     * ArtLight launch curtain — after firing the stream intent, poll the host's
+     * GAMESTATE via ArtLightBridge and surface real launch phases instead of a
+     * bare spinner. Fire-and-forget: the stream's own UI takes over on connect;
+     * on unreachable/older hosts this stays silent (never blocks the stream).
+     */
+    public static void doStartWithCurtain(final Activity parent, NvApp app, ComputerDetails computer,
+                                          ComputerManagerService.ComputerManagerBinder managerBinder) {
+        doStart(parent, app, computer, managerBinder);
+        if (computer.activeAddress == null) {
+            return;
+        }
+        final String address = computer.activeAddress.address;
+        final io.github.onaiaku.artmoon.artlight.ArtLightBridge bridge =
+                new io.github.onaiaku.artmoon.artlight.ArtLightBridge(parent);
+        final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+
+        // Up to ~20s of phase reports, 1s apart, then stop quietly.
+        final int[] pollsLeft = {20};
+        final Runnable[] pollRef = new Runnable[1];
+        final Runnable poll = new Runnable() {
+            @Override
+            public void run() {
+                pollsLeft[0]--;
+                if (pollsLeft[0] < 0) {
+                    return;
+                }
+                bridge.requestGameState(address, new io.github.onaiaku.artmoon.artlight.ArtLightBridge.ResponseCallback() {
+                    @Override
+                    public void onResult(final String response) {
+                        final String phase = formatGameState(response);
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (phase != null && !phase.isEmpty()) {
+                                    android.widget.Toast.makeText(parent, phase,
+                                            android.widget.Toast.LENGTH_SHORT).show();
+                                }
+                                handler.postDelayed(pollRef[0], 1000);
+                            }
+                        });
+                    }
+                });
+            }
+        };
+        pollRef[0] = poll;
+        handler.postDelayed(poll, 2500);
+    }
+
+    /**
+     * Map GAMESTATE JSON to a human phase, or null when nothing to report.
+     * "no curtain" responses return null — never "keep waiting".
+     */
+    private static String formatGameState(String json) {
+        if (json == null || json.isEmpty()) {
+            return null;
+        }
+        try {
+            org.json.JSONObject o = new org.json.JSONObject(json);
+            String state = o.optString("state", "");
+            String fg = o.optString("foreground", "");
+            switch (state) {
+                case "waiting_window":
+                    return parent_phase(fg, "waiting for its window…");
+                case "blocked":
+                    return parent_phase(fg, "is on screen — close it to continue");
+                case "ready":
+                    return null; // stream takes over now
+                default:
+                    return null; // unknown/older host: silence
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String parent_phase(String foreground, String suffix) {
+        if (foreground == null || foreground.isEmpty()) {
+            return "The game is " + suffix;
+        }
+        return foreground + " is " + suffix;
+    }
+
     public static void doNetworkTest(final Activity parent) {
         new Thread(new Runnable() {
             @Override

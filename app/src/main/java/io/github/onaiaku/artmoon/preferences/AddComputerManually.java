@@ -267,6 +267,7 @@ public class AddComputerManually extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        OrientationHelper.lockPortraitOnPhones(this);
 
         UiHelper.setLocale(this);
 

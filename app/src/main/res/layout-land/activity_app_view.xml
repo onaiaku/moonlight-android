@@ -11,7 +11,7 @@
     tools:context=".AppView" >
 
     <LinearLayout
-        android:id="@+id/***"
+        android:id="@+id/am_app_header"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
@@ -34,7 +34,7 @@
             android:textStyle="bold"
             android:letterSpacing="0.08"
             android:textAllCaps="true"
-            android:textColor="@color/***" />
+            android:textColor="@color/am_text_primary" />
 
         <ImageButton
             android:id="@+id/am_back"
@@ -56,6 +56,6 @@
         android:layout_alignParentEnd="true"
         android:layout_alignParentRight="true"
         android:layout_alignParentBottom="true"
-        android:layout_below="@+id/****"/>
+        android:layout_below="@+id/am_app_header"/>
 
 </RelativeLayout>

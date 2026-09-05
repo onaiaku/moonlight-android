@@ -17,6 +17,8 @@ import java.util.Comparator;
 
 public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
 
+    private final java.util.HashMap<String, android.view.View> boundViews = new java.util.HashMap<>();
+
     public PcGridAdapter(Context context, PreferenceConfiguration prefs) {
         super(context, getLayoutIdForPreferences(prefs));
     }
@@ -28,6 +30,22 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
     public void updateLayoutWithPreferences(Context context, PreferenceConfiguration prefs) {
         // This will trigger the view to reload with the new layout
         setLayoutId(getLayoutIdForPreferences(prefs));
+    }
+
+    @Override
+    public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
+        View v = super.getView(position, convertView, parent);
+        PcView.ComputerObject obj = (PcView.ComputerObject) getItem(position);
+        if (obj != null) {
+            boundViews.put(obj.details.uuid, v);
+        }
+        return v;
+    }
+
+    @Override
+    public void clear() {
+        boundViews.clear();
+        super.clear();
     }
 
     public void addComputer(PcView.ComputerObject computer) {
@@ -42,6 +60,31 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
                 return lhs.details.name.toLowerCase().compareTo(rhs.details.name.toLowerCase());
             }
         });
+    }
+
+    /**
+     * ArtLight telemetry: update the live host-metrics line on the row bound
+     * to this computer (STATS via ArtLightBridge). No-op if the view isn't
+     * currently on screen. Called from the poller on the UI thread.
+     */
+    public void updateTelemetryByUuid(String uuid, String telemetryText) {
+        View v = boundViews.get(uuid);
+        if (v == null) {
+            return;
+        }
+        TextView tel = v.findViewById(R.id.am_telemetry);
+        if (tel != null) {
+            if (telemetryText == null || telemetryText.isEmpty()) {
+                tel.setVisibility(android.view.View.GONE);
+            } else {
+                tel.setText(telemetryText);
+                tel.setVisibility(android.view.View.VISIBLE);
+            }
+        }
+    }
+
+    public View getViewForComputer(String uuid) {
+        return boundViews.get(uuid);
     }
 
     public boolean removeComputer(PcView.ComputerObject computer) {

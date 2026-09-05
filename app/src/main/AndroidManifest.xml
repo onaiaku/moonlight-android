@@ -134,6 +134,10 @@
             <meta-data android:name="WindowManagerPreference:FreeformWindowOrientation" android:value="landscape" />
         </activity>
         <activity
+            android:name=".artlight.ArtLightActivity"
+            android:hardwareAccelerated="true"
+            android:exported="false" />
+        <activity
             android:name=".preferences.AddComputerManually"
             android:resizeableActivity="true"
             android:windowSoftInputMode="stateVisible"
