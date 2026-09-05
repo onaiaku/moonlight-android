@@ -115,7 +115,6 @@ public class HostMetricsPoller {
                         if (!running) {
                             return;
                         }
-                        adapter.updateTelemetryByUuid(tgt.uuid, snap.summaryLine);
                         adapter.updateStatsByUuid(tgt.uuid, snap.rttMs, snap.gpuPercent, snap.netMbps);
                     }
                 });

@@ -83,27 +83,6 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
         });
     }
 
-    /**
-     * ArtLight telemetry: update the live host-metrics line on the row bound
-     * to this computer (STATS via ArtLightBridge). No-op if the view isn't
-     * currently on screen. Called from the poller on the UI thread.
-     */
-    public void updateTelemetryByUuid(String uuid, String telemetryText) {
-        View v = boundViews.get(uuid);
-        if (v == null) {
-            return;
-        }
-        TextView tel = v.findViewById(R.id.am_telemetry);
-        if (tel != null) {
-            if (telemetryText == null || telemetryText.isEmpty()) {
-                tel.setVisibility(android.view.View.GONE);
-            } else {
-                tel.setText(telemetryText);
-                tel.setVisibility(android.view.View.VISIBLE);
-            }
-        }
-    }
-
     public View getViewForComputer(String uuid) {
         return boundViews.get(uuid);
     }
