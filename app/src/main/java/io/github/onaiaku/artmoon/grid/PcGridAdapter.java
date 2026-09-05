@@ -190,7 +190,11 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
 
     @Override
     public void populateView(View parentView, ImageView imgView, ProgressBar prgView, TextView txtView, ImageView overlayView, PcView.ComputerObject obj) {
-        imgView.setImageResource(R.drawable.ic_computer);
+        // Upstream Moonlight's monitor glyph removed — the ArtMoon hero card
+        // has no icon well in its design. GONE so it leaves no gap; the
+        // offline overlay and pairing spinner in the same well stay visible
+        // when they have something to say.
+        imgView.setVisibility(View.GONE);
 
         // ArtMoon status dot + label, ported from the desktop's host card:
         // online green, pairing amber, offline red — always semantic, never the accent.
