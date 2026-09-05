@@ -1,5 +1,7 @@
 package io.github.onaiaku.artmoon.preferences;
 
+import io.github.onaiaku.artmoon.OrientationHelper;
+
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;

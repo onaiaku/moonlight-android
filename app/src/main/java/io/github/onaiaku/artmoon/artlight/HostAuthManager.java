@@ -54,7 +54,7 @@ public class HostAuthManager {
             public void run() {
                 String pin = pinsByUuid.get(uuid);
                 if (pin != null) {
-                    notify(uuid, "pending", pin);
+                    notifyState(uuid, "pending", pin);
                 }
             }
         });
@@ -65,12 +65,12 @@ public class HostAuthManager {
             @Override
             public void onResult(String caps) {
                 if (caps == null || !caps.startsWith("CAPS1")) {
-                    notify(uuid, "none", null);
+                    notifyState(uuid, "none", null);
                     return;
                 }
                 if (caps.contains("auth=optional")) {
                     pinsByUuid.remove(uuid);
-                    notify(uuid, "open", null);
+                    notifyState(uuid, "open", null);
                     return;
                 }
                 // auth required → enroll with a stable PIN while pending
@@ -91,9 +91,9 @@ public class HostAuthManager {
             public void onResult(String reply) {
                 if ("ENROLLED".equals(reply)) {
                     pinsByUuid.remove(uuid);
-                    notify(uuid, "authorized", null);
+                    notifyState(uuid, "authorized", null);
                 } else if ("PENDING".equals(reply)) {
-                    notify(uuid, "pending", pin);
+                    notifyState(uuid, "pending", pin);
                     if (attemptsLeft > 1) {
                         handler.postDelayed(new Runnable() {
                             @Override
@@ -106,15 +106,15 @@ public class HostAuthManager {
                     // PIN matters only while pending; drop it so a later
                     // re-request starts fresh (desktop parity).
                     pinsByUuid.remove(uuid);
-                    notify(uuid, "denied", null);
+                    notifyState(uuid, "denied", null);
                 } else {
-                    notify(uuid, "none", null);
+                    notifyState(uuid, "none", null);
                 }
             }
         });
     }
 
-    private void notify(final String uuid, final String state, final String pin) {
+    private void notifyState(final String uuid, final String state, final String pin) {
         handler.post(new Runnable() {
             @Override
             public void run() {

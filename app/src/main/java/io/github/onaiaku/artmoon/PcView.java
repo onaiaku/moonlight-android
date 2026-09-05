@@ -121,6 +121,11 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
     private final static int GAMESTREAM_EOL_ID = 11;
     private final static int POWER_ID = 12;
 
+    private io.github.onaiaku.artmoon.artlight.HostMetricsPoller metricsPoller;
+    private io.github.onaiaku.artmoon.artlight.HostAuthManager authManager;
+    private final java.util.HashSet<String> authProbedUuids = new java.util.HashSet<>();
+    private android.app.Dialog authPinDialog;
+
     private void initializeViews() {
         setContentView(R.layout.activity_pc_view);
 
@@ -697,10 +702,10 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
                 return true;
 
             case POWER_ID:
-                AdapterContextMenuInfo info =
+                AdapterContextMenuInfo powerMenuInfo =
                         (AdapterContextMenuInfo) item.getMenuInfo();
-                if (info != null) {
-                    ComputerObject pc = (ComputerObject) pcGridAdapter.getItem(info.position);
+                if (powerMenuInfo != null) {
+                    ComputerObject pc = (ComputerObject) pcGridAdapter.getItem(powerMenuInfo.position);
                     doArtLightPowerMenu(pc.details);
                 }
                 return true;

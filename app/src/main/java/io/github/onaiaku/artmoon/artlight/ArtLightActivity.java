@@ -9,7 +9,7 @@ import android.widget.TextView;
 
 import io.github.onaiaku.artmoon.LimeLog;
 import io.github.onaiaku.artmoon.R;
-import io.github.onaiaku.artmoon.UiHelper;
+import io.github.onaiaku.artmoon.utils.UiHelper;
 import io.github.onaiaku.artmoon.nvstream.http.ComputerDetails;
 
 import org.json.JSONObject;

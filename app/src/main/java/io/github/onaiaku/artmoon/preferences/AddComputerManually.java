@@ -1,5 +1,7 @@
 package io.github.onaiaku.artmoon.preferences;
 
+import io.github.onaiaku.artmoon.OrientationHelper;
+
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
