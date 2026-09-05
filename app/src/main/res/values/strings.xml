@@ -362,4 +362,7 @@
     <string name="am_artlight_releases">GitHub releases</string>
     <string name="am_artlight_note">Streaming works with any Moonlight-compatible host. These extras come from ArtLight: host metrics, link-speed matching, store badges, launch phases and power actions — after this device is allowed on the host.</string>
     <string name="pcview_menu_artlight_pair">Pair ArtLight Control</string>
+    <string name="am_hero_auth">ArtLight Authorized</string>
+    <string name="am_hero_ready">Ready to stream</string>
+    <string name="am_hero_offline">Offline</string>
 </resources>

@@ -126,6 +126,40 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
             }
         }
 
+        // Hero card: ready line + spec chips (approved render, spec section 2)
+        TextView readyLine = parentView.findViewById(R.id.am_ready_line);
+        if (readyLine != null) {
+            if (obj.details.state == ComputerDetails.State.ONLINE) {
+                readyLine.setText(R.string.am_hero_ready);
+                readyLine.setVisibility(View.VISIBLE);
+            } else if (obj.details.state == ComputerDetails.State.OFFLINE) {
+                readyLine.setText(R.string.am_hero_offline);
+                readyLine.setVisibility(View.VISIBLE);
+            } else {
+                readyLine.setVisibility(View.GONE);
+            }
+        }
+
+        TextView specRes = parentView.findViewById(R.id.am_spec_res);
+        TextView specFps = parentView.findViewById(R.id.am_spec_fps);
+        TextView specBitrate = parentView.findViewById(R.id.am_spec_bitrate);
+        boolean online = obj.details.state == ComputerDetails.State.ONLINE;
+        if (specRes != null && specFps != null && specBitrate != null) {
+            if (online) {
+                PreferenceConfiguration prefs = PreferenceConfiguration.readPreferences(context);
+                specRes.setText(prefs.width + "\u00d7" + prefs.height);
+                specFps.setText(prefs.fps + " FPS");
+                specBitrate.setText(prefs.bitrate + " Mbps");
+                specRes.setVisibility(View.VISIBLE);
+                specFps.setVisibility(View.VISIBLE);
+                specBitrate.setVisibility(View.VISIBLE);
+            } else {
+                specRes.setVisibility(View.GONE);
+                specFps.setVisibility(View.GONE);
+                specBitrate.setVisibility(View.GONE);
+            }
+        }
+
         if (obj.details.state == ComputerDetails.State.UNKNOWN) {
             prgView.setVisibility(View.VISIBLE);
         }
