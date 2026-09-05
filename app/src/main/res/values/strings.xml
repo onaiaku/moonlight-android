@@ -308,6 +308,7 @@
     <string name="am_status_offline">Offline</string>
     <string name="am_status_unpaired">Pair to use</string>
     <string name="am_status_checking">Checking…</string>
+    <string name="am_wordmark">ArtMoon</string>
     <string name="am_hosts_subtitle">Hosts on this network</string>
     <string name="am_add_pc">Add host manually</string>
     <string name="am_settings">Settings</string>

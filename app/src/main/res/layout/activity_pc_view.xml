@@ -20,7 +20,7 @@
         android:layout_marginStart="16dp"
         android:layout_marginLeft="16dp"
         android:layout_marginTop="14dp"
-        android:text="@string/app_name"
+        android:text="@string/am_wordmark"
         android:textSize="22sp"
         android:textStyle="bold"
         android:letterSpacing="0.12"
