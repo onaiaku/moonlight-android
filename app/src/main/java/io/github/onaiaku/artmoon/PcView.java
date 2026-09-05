@@ -1039,12 +1039,12 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
             return null;
         }
         for (int i = 0; i < pcGridAdapter.getCount(); i++) {
-            ComputerObject c = pcGridAdapter.getItem(i);
+            ComputerObject c = (ComputerObject) pcGridAdapter.getItem(i);
             if (c != null && c.details.state == ComputerDetails.State.ONLINE) {
                 return c;
             }
         }
-        return pcGridAdapter.getItem(0);
+        return (ComputerObject) pcGridAdapter.getItem(0);
     }
 
     /**
