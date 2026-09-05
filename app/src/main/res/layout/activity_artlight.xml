@@ -3,7 +3,10 @@
     ArtLight tab (settings) — phone port of the desktop's ArtLight settings tab:
     gold-moon hero, host/server status rows fed live from ArtLightBridge
     (server version, library sync, update state), ArtMoon self-update card,
-    and links out (Changelogs, ArtLight Control on the host, GitHub releases).
+    and links out (Changelogs, GitHub releases).
+    NOTE: no ArtLight Control link — Control is a host-side Windows app (named pipes),
+    not a web surface a phone can open. Real Control surface = PIN pairing, AUTHORIZED
+    badge, stream stats, all handled in PcView/HostAuthManager/HostMetricsPoller.
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"

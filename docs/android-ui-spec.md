@@ -110,9 +110,12 @@ windowed — Android streams fullscreen), V-Sync toggle, match refresh rate
 - Status card: server name + IP, ArtLight Server version vs latest release
   (up-to-date state via GitHub releases check), library sync status (app count
   from applist), Gamestream authorized state.
-- Buttons: **Changelogs** (changelog view), **Open ArtLight Control ↗**
-  (deep-link to Control's dashboard on a reachable host; web-UI fallback;
-  exact wiring decided at build time).
+- Buttons: **Changelogs** (changelog view), **GitHub releases**.
+  NO "Open ArtLight Control" button — CORRECTED 2026-09-05: ArtLight Control is a
+  host-side Windows desktop app (StreamTweak fork, C#/named-pipes), NOT a web
+  surface. There is nothing for a phone to deep-link to. Control's real user-facing
+  surface (PIN pairing, AUTHORIZED badge, stream stats) is ported in §9 via
+  HostAuthManager + PcView pairing dialog + HostMetricsPoller.
 - ArtMoon self-update card: installed vs latest, "Update now" only when older,
   GitHub releases link.
 
