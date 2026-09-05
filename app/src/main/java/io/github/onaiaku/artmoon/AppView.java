@@ -313,7 +313,8 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
 
         TextView label = findViewById(R.id.appListText);
         setTitle(computerName);
-        label.setText(computerName);
+        // Desktop header treatment: host name in caps with the online badge beside it.
+        label.setText(computerName.toUpperCase());
 
         // ArtMoon header back button (desktop header affordance).
         ImageButton backButton = findViewById(R.id.am_back);
