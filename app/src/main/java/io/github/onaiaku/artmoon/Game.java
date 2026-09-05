@@ -148,6 +148,11 @@ public class Game extends Activity implements SurfaceHolder.Callback,
     private TextView performanceOverlayView;
 
     private MediaCodecDecoderRenderer decoderRenderer;
+
+    // ArtLight telemetry: pushes client-side stream stats to the host every
+    // second while a stream is live (desktop parity — the host only displays).
+    private io.github.onaiaku.artmoon.artlight.SessionTelemetrySampler telemetrySampler;
+    private String streamHost;
     private boolean reportedCrash;
 
     private WifiManager.WifiLock highPerfWifiLock;
@@ -311,6 +316,7 @@ public class Game extends Activity implements SurfaceHolder.Callback,
         pcName = Game.this.getIntent().getStringExtra(EXTRA_PC_NAME);
 
         String host = Game.this.getIntent().getStringExtra(EXTRA_HOST);
+        streamHost = host;
         int port = Game.this.getIntent().getIntExtra(EXTRA_PORT, NvHTTP.DEFAULT_HTTP_PORT);
         int httpsPort = Game.this.getIntent().getIntExtra(EXTRA_HTTPS_PORT, 0); // 0 is treated as unknown
         int appId = Game.this.getIntent().getIntExtra(EXTRA_APP_ID, StreamConfiguration.INVALID_APP_ID);
@@ -2232,6 +2238,12 @@ public class Game extends Activity implements SurfaceHolder.Callback,
 
             controllerHandler.stop();
 
+            // Final telemetry flush with batch min/max applied before teardown
+            if (telemetrySampler != null) {
+                telemetrySampler.flushAndStop();
+                telemetrySampler = null;
+            }
+
             // Update GameManager state to indicate we're no longer in game
             UiHelper.notifyStreamEnded(this);
 
@@ -2414,6 +2426,13 @@ public class Game extends Activity implements SurfaceHolder.Callback,
                 connected = true;
                 connecting = false;
                 updatePipAutoEnter();
+
+                // Telemetry: sample+push every second while streaming.
+                if (telemetrySampler == null && streamHost != null) {
+                    telemetrySampler = new io.github.onaiaku.artmoon.artlight.SessionTelemetrySampler(
+                            Game.this, streamHost, prefConfig.fps, prefConfig.bitrate, decoderRenderer);
+                    telemetrySampler.start();
+                }
 
                 // Hide the mouse cursor now after a short delay.
                 // Doing it before dismissing the spinner seems to be undone

@@ -1757,6 +1757,42 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
         return capabilities;
     }
 
+    /**
+     * ArtLight telemetry: snapshot of the rolling 2-second stats window (the
+     * same window the performance overlay renders). Read from any thread;
+     * mirrors the overlay's unsynchronised read pattern.
+     */
+    public static class WindowStats {
+        public float fpsAvg;        // rendered fps
+        public float receivedFps;
+        public int framesLost;      // frames lost in the window
+        public float decodeMs;      // avg decode time per received frame
+        public float hostLatencyAvgMs;  // capture+encode latency, tenths-rounded
+        public float hostLatencyMaxMs;
+        public boolean hasHostLatency;
+    }
+
+    public WindowStats getLastWindowStats() {
+        VideoStats lastTwo = new VideoStats();
+        lastTwo.add(lastWindowVideoStats);
+        lastTwo.add(activeWindowVideoStats);
+        WindowStats ws = new WindowStats();
+        VideoStatsFps fps = lastTwo.getFps();
+        ws.fpsAvg = fps.renderedFps;
+        ws.receivedFps = fps.receivedFps;
+        ws.framesLost = lastTwo.framesLost;
+        if (lastTwo.totalFramesReceived > 0) {
+            ws.decodeMs = (float) lastTwo.decoderTimeMs / lastTwo.totalFramesReceived;
+        }
+        if (lastTwo.framesWithHostProcessingLatency > 0) {
+            ws.hasHostLatency = true;
+            ws.hostLatencyAvgMs = (float) lastTwo.totalHostProcessingLatency / 10
+                    / lastTwo.framesWithHostProcessingLatency;
+            ws.hostLatencyMaxMs = (float) lastTwo.maxHostProcessingLatency / 10;
+        }
+        return ws;
+    }
+
     public int getAverageEndToEndLatency() {
         if (globalVideoStats.totalFramesReceived == 0) {
             return 0;

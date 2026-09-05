@@ -87,6 +87,56 @@ public class ArtLightBridge {
         sendRequest(hostAddress, "UPDATESTATE", onResult);
     }
 
+    /**
+     * Push client-side stream telemetry to the host (desktop parity: the
+     * client measures the stream, the host only displays). Wire format is
+     * three lines — AUTH1 (signed over the bare "SESSIONDATA" command, like
+     * the desktop), the SESSIONDATA command line, then the compact batch
+     * JSON from SessionTelemetrySampler. The payload must contain no
+     * embedded newlines (bridge protocol). Fire-and-forget; the host's OK
+     * reply is discarded.
+     */
+    public void sendSessionData(String hostAddress, String jsonPayload) {
+        final String addr = hostAddress;
+        final String payload = jsonPayload;
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                Socket socket = null;
+                try {
+                    socket = SocketFactory.getDefault().createSocket();
+                    socket.connect(new InetSocketAddress(addr, STREAMTWEAK_PORT), CONNECT_TIMEOUT_MS);
+                    socket.setSoTimeout(READ_TIMEOUT_MS);
+
+                    StringBuilder out = new StringBuilder();
+                    String auth = buildAuthLine("SESSIONDATA");
+                    if (auth != null) {
+                        out.append(auth).append('\n');
+                    }
+                    out.append("SESSIONDATA").append('\n');
+                    out.append(payload).append('\n');
+
+                    OutputStreamWriter writer = new OutputStreamWriter(
+                            socket.getOutputStream(), StandardCharsets.UTF_8);
+                    writer.write(out.toString());
+                    writer.flush();
+
+                    // Drain the OK reply so the host isn't left with an
+                    // unread socket; discard it (fire-and-forget semantics).
+                    BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+                    while (reader.readLine() != null) { /* drain */ }
+                } catch (Exception e) {
+                    LimeLog.info("ArtLightBridge: SESSIONDATA to " + addr + " failed: " + e.getMessage());
+                } finally {
+                    if (socket != null) {
+                        try { socket.close(); } catch (Exception ignored) {}
+                    }
+                }
+            }
+        });
+    }
+
     /** Ask the host to power off. Destructive; approved clients only. */
     public void sendShutdown(String hostAddress) {
         sendCommand(hostAddress, "SHUTDOWN");
