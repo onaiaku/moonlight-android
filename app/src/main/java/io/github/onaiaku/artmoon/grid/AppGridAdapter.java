@@ -35,6 +35,7 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
     private final boolean showHiddenApps;
 
     private CachedAppAssetLoader loader;
+    private android.widget.TextView loaderTextViewDummy;
     private Set<Integer> hiddenAppIds = new HashSet<>();
     private ArrayList<AppView.AppObject> allApps = new ArrayList<>();
     private java.util.HashMap<String, String> storeMap = new java.util.HashMap<>();
@@ -182,7 +183,16 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
         // row (thumb + title beside it) the title must ALWAYS show, whatever the
         // art state, and the indeterminate spinner must never linger: a visible
         // spinner on every row read as "constantly refreshing each app".
-        loader.populateImageView(obj.app, imgView, txtView);
+        // Give the loader a detached dummy TextView so its visibility dance
+        // (INVISIBLE while loading, GONE once real box art lands) can't touch the
+        // row's real title. The async completion used to fire AFTER this method and
+        // GONE the title — which is why names only appeared after scrolling away
+        // and back (rebind from memory cache, no late callback). The dummy is never
+        // attached to any layout, so the loader writes into the void.
+        if (loaderTextViewDummy == null) {
+            loaderTextViewDummy = new android.widget.TextView(parentView.getContext());
+        }
+        loader.populateImageView(obj.app, imgView, loaderTextViewDummy);
         prgView.setVisibility(View.GONE);
         txtView.setText(obj.app.getAppName());
         txtView.setVisibility(View.VISIBLE);

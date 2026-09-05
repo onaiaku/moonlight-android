@@ -10,10 +10,12 @@
     android:background="@color/am_ground"
     tools:context=".PcView" >
 
-        <View
+        <ImageView
         android:id="@+id/am_logo"
         android:layout_width="26dp"
         android:layout_height="26dp"
+        android:src="@drawable/am_brand"
+        android:scaleType="fitCenter"
         android:layout_alignParentTop="true"
         android:layout_alignParentStart="true"
         android:layout_alignParentLeft="true"
@@ -54,55 +56,6 @@
         android:letterSpacing="0.08"
         android:textAllCaps="true"
         android:textColor="@color/am_text_secondary" />
-
-    <LinearLayout
-        android:id="@+id/am_toolbar"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentRight="true"
-        android:orientation="horizontal"
-        android:padding="10dp">
-
-        <ImageButton
-            android:id="@+id/settingsButton"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginEnd="8dp"
-            android:layout_marginRight="8dp"
-            android:background="@drawable/am_pill_soft"
-            android:scaleType="fitCenter"
-            android:padding="11dp"
-            android:src="@drawable/ic_settings"
-            android:preferKeepClear="true"
-            android:contentDescription="@string/am_settings" />
-
-        <ImageButton
-            android:id="@+id/helpButton"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginEnd="8dp"
-            android:layout_marginRight="8dp"
-            android:background="@drawable/am_pill_soft"
-            android:scaleType="fitCenter"
-            android:padding="11dp"
-            android:src="@drawable/ic_help"
-            android:preferKeepClear="true"
-            android:contentDescription="@string/help" />
-
-        <ImageButton
-            android:id="@+id/manuallyAddPc"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="@drawable/am_pill_accent"
-            android:scaleType="fitCenter"
-            android:padding="11dp"
-            android:src="@drawable/ic_add"
-            android:tint="@color/am_on_accent"
-            android:preferKeepClear="true"
-            android:contentDescription="@string/am_add_pc" />
-    </LinearLayout>
 
     <!-- Host picker row (portrait): PgUp / selected host / + Add a host / PgDn -->
     <LinearLayout

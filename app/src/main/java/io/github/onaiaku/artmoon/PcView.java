@@ -144,49 +144,18 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
         // Set the correct layout for the PC grid
         pcGridAdapter.updateLayoutWithPreferences(this, PreferenceConfiguration.readPreferences(this));
 
-        // Setup the list view
-        ImageButton settingsButton = findViewById(R.id.settingsButton);
-        ImageButton addComputerButton = findViewById(R.id.manuallyAddPc);
-        ImageButton helpButton = findViewById(R.id.helpButton);
-
-        // Picker-row "+ Add a host": same flow as the rail/toolbar add button.
-        // Null-safe: portrait and landscape both carry the id; other layouts may not.
+        // Toolbar/rail buttons (settings, help, add) were removed from the layouts:
+        // their real actions live in the footer keycaps (S Settings, P Shutdown) and
+        // the picker row. "Add a host" stays reachable from the picker-row text.
         android.widget.TextView addPicker = findViewById(R.id.manuallyAddPcText);
         if (addPicker != null) {
-            final ImageButton addBtn = addComputerButton;
             addPicker.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    addBtn.performClick();
+                    Intent i = new Intent(PcView.this, AddComputerManually.class);
+                    startActivity(i);
                 }
             });
-        }
-
-        settingsButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(PcView.this, StreamSettings.class));
-            }
-        });
-        addComputerButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent i = new Intent(PcView.this, AddComputerManually.class);
-                startActivity(i);
-            }
-        });
-        helpButton.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                HelpLauncher.launchSetupGuide(PcView.this);
-            }
-        });
-
-        // Amazon review didn't like the help button because the wiki was not entirely
-        // navigable via the Fire TV remote (though the relevant parts were). Let's hide
-        // it on Fire TV.
-        if (getPackageManager().hasSystemFeature("amazon.hardware.fire_tv")) {
-            helpButton.setVisibility(View.GONE);
         }
 
         // Footer keycaps (render parity): P Shutdown / S Settings / Esc Exit are
