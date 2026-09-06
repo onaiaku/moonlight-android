@@ -8,36 +8,37 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * PromptBar — re-renders a screen's footer prompt pills to match the active
- * input mode (desktop parity: prompts always tell the truth about the device
- * driving the UI).
+ * PromptBar — footer prompt pills that always show KEY + NAME, with the key
+ * half rendered per input mode (Nik's spec, desktop parity):
  *
- * Each screen registers its pills once with (view, keycapText, label)
- * triples; when the input mode changes (or the bar is first attached) every
- * pill's text is rewritten:
- *   TOUCH    → keycap "✓", label plain ("Settings", "Shutdown", "Exit")
- *   GAMEPAD  → keycap glyph (Y / B / A ...), label unchanged
- *   KEYBOARD → keycap letter (S / P / Esc ...), label unchanged
+ *   TOUCH     → name only ("Shutdown"), keycap hidden — the pill IS the button
+ *   KEYBOARD  → [P] Shutdown   (flat keycap chip with the key letter)
+ *   GAMEPAD   → (Y) Settings   (coloured Xbox face button + name)
  *
- * Pills are matched by their stable resource id name so screens don't need
- * custom subclasses — register with R.id values and strings resolved here.
+ * Each screen registers (keycapView, labelView, action) triples. The keycap
+ * is shown/hidden and re-skinned on mode change; the label always keeps its
+ * real name — labels are never overwritten.
  */
 public final class PromptBar {
 
-    /** One prompt pill: the keycap TextView and its meaning. */
+    /** One prompt: the keycap chip and the label next to it. */
     public static class Pill {
         public final TextView keycap;
+        public final TextView label;
         /** Semantic action: "settings" | "shutdown" | "exit" | "hosts" | "back" */
         public final String action;
 
-        public Pill(TextView keycap, String action) {
+        public Pill(TextView keycap, TextView label, String action) {
             this.keycap = keycap;
+            this.label = label;
             this.action = action;
         }
     }
 
     private final Map<String, Pill> pills = new LinkedHashMap<>();
-    private final Map<String, android.graphics.drawable.Drawable> origBg = new LinkedHashMap<>();
+    // Resting state per action, restored when leaving gamepad mode
+    private final Map<String, android.graphics.drawable.Drawable> origKeycapBg = new LinkedHashMap<>();
+    private final Map<String, Integer> origKeycapColor = new LinkedHashMap<>();
     private final Activity activity;
     private boolean registered = false;
 
@@ -51,22 +52,25 @@ public final class PromptBar {
         });
     }
 
-    /** Register one pill. Safe to call again; later registration wins. */
-    public void register(TextView keycap, String action) {
-        if (keycap != null) {
-            if (!origBg.containsKey(action)) {
-                origBg.put(action, keycap.getBackground());
-            }
-            pills.put(action, new Pill(keycap, action));
+    /** Register a keycap+label pair. Either view may be null (null-safe). */
+    public void register(TextView keycap, TextView label, String action) {
+        if (keycap == null && label == null) {
+            return;
         }
+        if (keycap != null && !origKeycapBg.containsKey(action)) {
+            origKeycapBg.put(action, keycap.getBackground());
+            origKeycapColor.put(action, keycap.getCurrentTextColor());
+        }
+        pills.put(action, new Pill(keycap, label, action));
     }
 
-    /** Register by view id lookup (null-safe — portrait layouts may lack pills). */
-    public void registerById(int viewId, String action) {
-        View v = activity.findViewById(viewId);
-        if (v instanceof TextView) {
-            register((TextView) v, action);
-        }
+    /** Register by view id lookup (null-safe — layouts may lack pills). */
+    public void registerById(int keycapId, int labelId, String action) {
+        View k = activity.findViewById(keycapId);
+        View l = activity.findViewById(labelId);
+        register(k instanceof TextView ? (TextView) k : null,
+                 l instanceof TextView ? (TextView) l : null,
+                 action);
     }
 
     /** First paint + mark as live. Call after all registrations. */
@@ -84,28 +88,52 @@ public final class PromptBar {
             return;
         }
         for (Pill p : pills.values()) {
+            boolean gamepad = mode == InputModeManager.Mode.GAMEPAD;
+            boolean keyboard = mode == InputModeManager.Mode.KEYBOARD;
+
+            if (p.label != null) {
+                // Label always shows the real name — restore the string
+                // resource in case anything ever overwrote it.
+                p.label.setText(labelFor(p.action));
+            }
+
             if (p.keycap == null) {
                 continue;
             }
-            p.keycap.setText(textFor(mode, p.action));
-            if (mode == InputModeManager.Mode.GAMEPAD) {
-                // Coloured face-button icon (desktop parity): letter sits on
-                // the pad button's colour instead of the flat pill.
-                p.keycap.setBackgroundResource(gamepadBg(p.action));
-                p.keycap.setTextColor(0xFF1A1D22); // dark lettering on bright pad colours
+            if (mode == InputModeManager.Mode.TOUCH) {
+                // Touch: the pill IS the button — no fake keycap.
+                p.keycap.setVisibility(View.GONE);
             } else {
-                android.graphics.drawable.Drawable bg = origBg.get(p.action);
-                if (bg != null) {
-                    p.keycap.setBackground(bg);
+                p.keycap.setVisibility(View.VISIBLE);
+                p.keycap.setText(textFor(mode, p.action));
+                if (gamepad) {
+                    // Coloured Xbox face button + dark lettering
+                    p.keycap.setBackgroundResource(gamepadBg(p.action));
+                    p.keycap.setTextColor(0xFF1A1D22);
+                } else { // keyboard
+                    android.graphics.drawable.Drawable bg = origKeycapBg.get(p.action);
+                    if (bg != null) {
+                        p.keycap.setBackground(bg);
+                    }
+                    Integer col = origKeycapColor.get(p.action);
+                    if (col != null) {
+                        p.keycap.setTextColor(col);
+                    }
                 }
-                p.keycap.setTextColor(0xFFFFFFFF);
             }
         }
     }
 
+    private static String textFor(InputModeManager.Mode mode, String action) {
+        if (mode == InputModeManager.Mode.GAMEPAD) {
+            return gamepadGlyph(action);
+        }
+        return keyboardKey(action);
+    }
+
     private static int gamepadBg(String action) {
         if ("settings".equals(action)) {
-            return io.github.onaiaku.artmoon.R.drawable.am_pad_y; // Y = settings, yellow
+            return io.github.onaiaku.artmoon.R.drawable.am_pad_y; // yellow Y
         }
         if ("shutdown".equals(action)) {
             return io.github.onaiaku.artmoon.R.drawable.am_pad_power;
@@ -114,27 +142,14 @@ public final class PromptBar {
         return io.github.onaiaku.artmoon.R.drawable.am_pad_b;
     }
 
-    private static String textFor(InputModeManager.Mode mode, String action) {
-        switch (mode) {
-            case GAMEPAD:
-                return gamepadGlyph(action);
-            case KEYBOARD:
-                return keyboardKey(action);
-            case TOUCH:
-            default:
-                // Touch: no hardware affordance — show a tap glyph
-                return "✓";
-        }
-    }
-
     private static String gamepadGlyph(String action) {
-        // Desktop mapping (ArtMoon SettingsScreen/HostStage prompts):
-        //   Y = settings, P(view)/Start = power, B = back/exit, A = select
+        // Desktop mapping: Y = settings, B = back/exit, A = select,
+        // power gets the neutral pad.
         if ("settings".equals(action)) {
             return "Y";
         }
         if ("shutdown".equals(action)) {
-            return "⟳"; // shoulder/start power affordance — no standard glyph
+            return "⟳";
         }
         if ("exit".equals(action) || "back".equals(action) || "hosts".equals(action)) {
             return "B";
@@ -153,5 +168,21 @@ public final class PromptBar {
             return "Esc";
         }
         return "Enter";
+    }
+
+    private static String labelFor(String action) {
+        if ("shutdown".equals(action)) {
+            return "Shutdown";
+        }
+        if ("settings".equals(action)) {
+            return "Settings";
+        }
+        if ("hosts".equals(action)) {
+            return "Hosts";
+        }
+        if ("exit".equals(action) || "back".equals(action)) {
+            return "Exit";
+        }
+        return action;
     }
 }

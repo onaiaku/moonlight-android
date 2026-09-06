@@ -177,6 +177,25 @@
             android:paddingBottom="4dp" />
 
         <TextView
+            android:id="@+id/am_pick_kb_settings"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/am_footer_key_s"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="@color/am_on_accent"
+            android:background="@drawable/am_pill_soft"
+            android:paddingStart="9dp"
+            android:paddingLeft="9dp"
+            android:paddingEnd="9dp"
+            android:paddingRight="9dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:layout_marginEnd="6dp"
+            android:layout_marginRight="6dp"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/am_pick_key_settings"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -202,6 +221,25 @@
             android:paddingRight="9dp"
             android:paddingTop="4dp"
             android:paddingBottom="4dp" />
+
+        <TextView
+            android:id="@+id/am_pick_kb_hosts"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/am_footer_key_esc"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="@color/am_on_accent"
+            android:background="@drawable/am_pill_soft"
+            android:paddingStart="9dp"
+            android:paddingLeft="9dp"
+            android:paddingEnd="9dp"
+            android:paddingRight="9dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
+            android:layout_marginEnd="6dp"
+            android:layout_marginRight="6dp"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/am_pick_key_hosts"

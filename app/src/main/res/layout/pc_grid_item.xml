@@ -31,6 +31,14 @@
         android:layout_height="match_parent"
         android:background="@drawable/am_hero_bg">
 
+        <ImageView
+            android:id="@+id/am_hero_bg_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            android:contentDescription="@null" />
+
         <View
             android:layout_width="match_parent"
             android:layout_height="match_parent"

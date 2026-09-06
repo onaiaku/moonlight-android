@@ -33,6 +33,8 @@ import android.app.ActivityManager;
 import android.app.Service;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.net.Uri;
+import io.github.onaiaku.artmoon.artlight.HostBackgroundManager;
 import android.content.ServiceConnection;
 import android.content.res.Configuration;
 import android.opengl.GLSurfaceView;
@@ -60,6 +62,9 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements AdapterFragmentCallbacks {
+    private static final int REQ_HERO_BG = 9101;
+    private HostBackgroundManager heroBgManager;
+    private String heroBgPendingUuid;
     private io.github.onaiaku.artmoon.artlight.PromptBar promptBar;
     private RelativeLayout noPcFoundLayout;
     private PcGridAdapter pcGridAdapter;
@@ -195,9 +200,9 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         // Input-aware prompt bar: keycap pills re-render for touch / gamepad /
         // keyboard (desktop parity — prompts always tell the truth).
         promptBar = new io.github.onaiaku.artmoon.artlight.PromptBar(this);
-        promptBar.registerById(R.id.am_footer_shutdown, "shutdown");
-        promptBar.registerById(R.id.am_footer_settings, "settings");
-        promptBar.registerById(R.id.am_footer_exit, "exit");
+        promptBar.registerById(R.id.am_footer_kb_shutdown, R.id.am_footer_shutdown, "shutdown");
+        promptBar.registerById(R.id.am_footer_kb_settings, R.id.am_footer_settings, "settings");
+        promptBar.registerById(R.id.am_footer_kb_exit, R.id.am_footer_exit, "exit");
         promptBar.attach();
 
         getFragmentManager().beginTransaction()
@@ -1057,6 +1062,90 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
                     openContextMenu(cardView);
                 }
             });
+        }
+    }
+
+    /**
+     * Long-press menu on the hero card: set / change / remove the per-PC
+     * background image. Called from PcGridAdapter.populateView.
+     */
+    public void showHeroBackgroundMenu(String uuid) {
+        if (heroBgManager == null) {
+            heroBgManager = new HostBackgroundManager(this);
+        }
+        final String uid = uuid;
+        android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(this);
+        b.setTitle(computerNameForUuid(uid));
+        java.util.List<String> options = new java.util.ArrayList<>();
+        if (heroBgManager.has(uid)) {
+            options.add(getString(R.string.am_hero_bg_change));
+            options.add(getString(R.string.am_hero_bg_remove));
+        } else {
+            options.add(getString(R.string.am_hero_bg_set));
+        }
+        final String[] items = options.toArray(new String[0]);
+        b.setItems(items, new android.content.DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(android.content.DialogInterface dialog, int which) {
+                if (heroBgManager.has(uid) && which == 1) {
+                    // Remove
+                    heroBgManager.remove(uid);
+                    Toast.makeText(PcView.this, R.string.am_hero_bg_removed, Toast.LENGTH_SHORT).show();
+                    refreshGridAdapter();
+                } else {
+                    // Set / change — launch the system document picker
+                    heroBgPendingUuid = uid;
+                    Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("image/*");
+                    try {
+                        startActivityForResult(
+                                Intent.createChooser(intent, getString(R.string.am_hero_bg_set)),
+                                REQ_HERO_BG);
+                    } catch (android.content.ActivityNotFoundException e) {
+                        Toast.makeText(PcView.this, R.string.am_hero_bg_set, Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
+        b.show();
+    }
+
+    private String computerNameForUuid(String uuid) {
+        if (pcGridAdapter != null) {
+            for (int i = 0; i < pcGridAdapter.getCount(); i++) {
+                ComputerObject co = (ComputerObject) pcGridAdapter.getItem(i);
+                if (co != null && uuid.equals(co.details.uuid)) {
+                    return co.details.name;
+                }
+            }
+        }
+        return getString(R.string.am_hero_bg_set);
+    }
+
+    private void refreshGridAdapter() {
+        // Force the bound rows to re-render with the new background state
+        if (pcGridAdapter != null) {
+            pcGridAdapter.notifyDataSetChanged();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_HERO_BG && resultCode == RESULT_OK
+                && data != null && data.getData() != null
+                && heroBgPendingUuid != null) {
+            if (heroBgManager == null) {
+                heroBgManager = new HostBackgroundManager(this);
+            }
+            if (heroBgManager.set(heroBgPendingUuid, data.getData())) {
+                Toast.makeText(this, R.string.am_hero_bg_applied, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, R.string.am_hero_bg_failed, Toast.LENGTH_SHORT).show();
+            }
+            heroBgPendingUuid = null;
+            refreshGridAdapter();
         }
     }
 

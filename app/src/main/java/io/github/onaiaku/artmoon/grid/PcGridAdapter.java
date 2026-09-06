@@ -1,6 +1,7 @@
 package io.github.onaiaku.artmoon.grid;
 
 import android.content.Context;
+import io.github.onaiaku.artmoon.artlight.HostBackgroundManager;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
@@ -25,6 +26,15 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
 
     public void setPcView(io.github.onaiaku.artmoon.PcView view) {
         this.pcView = view;
+    }
+
+    private HostBackgroundManager bgManager;
+
+    private HostBackgroundManager getBgManager() {
+        if (bgManager == null) {
+            bgManager = new HostBackgroundManager(context);
+        }
+        return bgManager;
     }
 
     public PcGridAdapter(Context context, PreferenceConfiguration prefs) {
@@ -195,6 +205,29 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
         // offline overlay and pairing spinner in the same well stay visible
         // when they have something to say.
         imgView.setVisibility(View.GONE);
+
+        // Per-PC hero background (long-press to set/remove). Full-bleed
+        // behind the scrim; falls back to the gradient when none is set.
+        ImageView heroBg = parentView.findViewById(R.id.am_hero_bg_image);
+        if (heroBg != null) {
+            android.graphics.Bitmap bgBmp = getBgManager().load(obj.details.uuid);
+            if (bgBmp != null) {
+                heroBg.setImageBitmap(bgBmp);
+                heroBg.setVisibility(View.VISIBLE);
+            } else {
+                heroBg.setImageDrawable(null);
+                heroBg.setVisibility(View.GONE);
+            }
+            parentView.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    if (pcView != null) {
+                        pcView.showHeroBackgroundMenu(obj.details.uuid);
+                    }
+                    return true;
+                }
+            });
+        }
 
         // ArtMoon status dot + label, ported from the desktop's host card:
         // online green, pairing amber, offline red — always semantic, never the accent.

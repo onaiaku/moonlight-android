@@ -390,4 +390,10 @@
     <string name="am_pick_key_esc" translatable="false">Esc</string>
     <string name="am_pick_settings" translatable="false">Settings</string>
     <string name="am_pick_hosts" translatable="false">Hosts</string>
+    <string name="am_hero_bg_set">Set a background</string>
+    <string name="am_hero_bg_change">Change background</string>
+    <string name="am_hero_bg_remove">Remove background</string>
+    <string name="am_hero_bg_applied">Background set</string>
+    <string name="am_hero_bg_failed">Couldn\'t load that image</string>
+    <string name="am_hero_bg_removed">Background removed</string>
 </resources>
