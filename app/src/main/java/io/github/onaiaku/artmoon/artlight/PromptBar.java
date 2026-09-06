@@ -37,6 +37,7 @@ public final class PromptBar {
     }
 
     private final Map<String, Pill> pills = new LinkedHashMap<>();
+    private final Map<String, android.graphics.drawable.Drawable> origBg = new LinkedHashMap<>();
     private final Activity activity;
     private boolean registered = false;
 
@@ -53,6 +54,9 @@ public final class PromptBar {
     /** Register one pill. Safe to call again; later registration wins. */
     public void register(TextView keycap, String action) {
         if (keycap != null) {
+            if (!origBg.containsKey(action)) {
+                origBg.put(action, keycap.getBackground());
+            }
             pills.put(action, new Pill(keycap, action));
         }
     }
@@ -84,7 +88,30 @@ public final class PromptBar {
                 continue;
             }
             p.keycap.setText(textFor(mode, p.action));
+            if (mode == InputModeManager.Mode.GAMEPAD) {
+                // Coloured face-button icon (desktop parity): letter sits on
+                // the pad button's colour instead of the flat pill.
+                p.keycap.setBackgroundResource(gamepadBg(p.action));
+                p.keycap.setTextColor(0xFF1A1D22); // dark lettering on bright pad colours
+            } else {
+                android.graphics.drawable.Drawable bg = origBg.get(p.action);
+                if (bg != null) {
+                    p.keycap.setBackground(bg);
+                }
+                p.keycap.setTextColor(0xFFFFFFFF);
+            }
         }
+    }
+
+    private static int gamepadBg(String action) {
+        if ("settings".equals(action)) {
+            return io.github.onaiaku.artmoon.R.drawable.am_pad_y; // Y = settings, yellow
+        }
+        if ("shutdown".equals(action)) {
+            return io.github.onaiaku.artmoon.R.drawable.am_pad_power;
+        }
+        // exit / back / hosts → red B
+        return io.github.onaiaku.artmoon.R.drawable.am_pad_b;
     }
 
     private static String textFor(InputModeManager.Mode mode, String action) {
