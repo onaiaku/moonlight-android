@@ -28,6 +28,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
+import android.widget.ImageButton;
 
 import io.github.onaiaku.artmoon.LimeLog;
 import io.github.onaiaku.artmoon.PcView;
@@ -66,6 +67,17 @@ public class StreamSettings extends Activity {
         UiHelper.setLocale(this);
 
         setContentView(R.layout.activity_stream_settings);
+
+        // AM header back button — matches the picker header affordance.
+        ImageButton backButton = (ImageButton) findViewById(R.id.am_settings_back);
+        if (backButton != null) {
+            backButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    finish();
+                }
+            });
+        }
 
         UiHelper.notifyNewRootView(this);
     }

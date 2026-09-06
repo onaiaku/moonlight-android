@@ -1,0 +1,6 @@
+<resources>
+    <!-- API 28+: tint legacy preference category headers. -->
+    <style name="AmSettingsTheme">
+        <item name="android:preferenceCategoryTitleTextColor">@color/am_text_secondary</item>
+    </style>
+</resources>

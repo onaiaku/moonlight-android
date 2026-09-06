@@ -313,6 +313,7 @@
     <string name="am_add_pc">Add host manually</string>
     <string name="am_settings">Settings</string>
     <string name="am_back">Back</string>
+    <string name="title_stream_settings">Streaming Settings</string>
     <!-- ArtMoon v3 screens -->
     <string name="am_tagline">Gamestream</string>
     <string name="am_status_ready">Ready to stream</string>
