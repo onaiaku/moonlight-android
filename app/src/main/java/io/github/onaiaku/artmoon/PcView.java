@@ -1176,6 +1176,21 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
 
     public void receiveAbsListView(AbsListView listView) {
         listView.setAdapter(pcGridAdapter);
+
+        // Desktop FocusFrame parity: D-pad focus moves the accent ring, driven
+        // through the adapter (same deterministic path as the picker's band).
+        listView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> arg0, View arg1, int pos, long id) {
+                pcGridAdapter.setFocusedPosition(pos);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> arg0) {
+                pcGridAdapter.setFocusedPosition(AdapterView.INVALID_POSITION);
+            }
+        });
+
         listView.setOnItemClickListener(new OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> arg0, View arg1, int pos,

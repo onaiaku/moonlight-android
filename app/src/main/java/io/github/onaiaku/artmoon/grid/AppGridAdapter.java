@@ -3,7 +3,9 @@ package io.github.onaiaku.artmoon.grid;
 import android.content.Context;
 import android.graphics.BitmapFactory;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.AdapterView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -121,6 +123,32 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
 
     public void setSelectedApp(AppView.AppObject app) {
         this.selectedApp = app;
+    }
+
+    /**
+     * D-pad focus tracking, desktop FocusFrame parity: the ring follows the
+     * focused row via the activated state (set in getView), independent of
+     * the selection band that follows the picked app.
+     */
+    private int focusedPosition = AdapterView.INVALID_POSITION;
+
+    public void setFocusedPosition(int pos) {
+        if (focusedPosition != pos) {
+            focusedPosition = pos;
+            notifyDataSetChanged();
+        }
+    }
+
+    public int getFocusedPosition() {
+        return focusedPosition;
+    }
+
+    @Override
+    public View getView(int position, View convertView, ViewGroup parent) {
+        View v = super.getView(position, convertView, parent);
+        // Desktop FocusFrame parity: the focused row wears the accent ring.
+        v.setActivated(position == focusedPosition);
+        return v;
     }
 
     /**

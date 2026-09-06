@@ -21,6 +21,25 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
 
     private final java.util.HashMap<String, android.view.View> boundViews = new java.util.HashMap<>();
 
+    /**
+     * D-pad focus tracking, desktop parity: the adapter owns "what has the
+     * ring" (like the desktop's focusZone/actionIndex) instead of trusting
+     * Android focus state inside the GridView. Painted via the row's
+     * activated state, which am_focus_ring shows as the solid accent ring.
+     */
+    private int focusedPosition = android.widget.AdapterView.INVALID_POSITION;
+
+    public void setFocusedPosition(int pos) {
+        if (focusedPosition != pos) {
+            focusedPosition = pos;
+            notifyDataSetChanged();
+        }
+    }
+
+    public int getFocusedPosition() {
+        return focusedPosition;
+    }
+
     /** Optional hook to the owning PcView so card actions can reuse its flows. */
     private io.github.onaiaku.artmoon.PcView pcView;
 
@@ -50,6 +69,8 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
     @Override
     public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
         View v = super.getView(position, convertView, parent);
+        // Desktop FocusFrame parity: the focused row wears the accent ring.
+        v.setActivated(position == focusedPosition);
         if (parent != null && parent.getHeight() > 0
                 && v.getLayoutParams().height != parent.getHeight()) {
             android.view.ViewGroup.LayoutParams lp = v.getLayoutParams();

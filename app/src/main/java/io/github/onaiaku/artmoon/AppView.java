@@ -840,6 +840,8 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
         listView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> arg0, View arg1, int pos, long id) {
+                // Ring follows focus in every mode (desktop FocusFrame parity).
+                appGridAdapter.setFocusedPosition(pos);
                 if (InputModeManager.get().getMode() != InputModeManager.Mode.GAMEPAD) {
                     return;
                 }
@@ -858,6 +860,7 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
 
             @Override
             public void onNothingSelected(AdapterView<?> arg0) {
+                appGridAdapter.setFocusedPosition(AdapterView.INVALID_POSITION);
             }
         });
 
