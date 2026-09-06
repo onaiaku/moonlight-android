@@ -1178,6 +1178,15 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
      */
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        // Classify FIRST. The base class normally does this in its own
+        // dispatchKeyEvent, but we override it — so without this call the
+        // mode is read one press stale: press 1 on a clean start is treated
+        // as TOUCH and leaks to the framework's focus search (the ring
+        // loss Nik saw). Classify before we ever read getMode().
+        if (event.getAction() == KeyEvent.ACTION_DOWN
+                || event.getAction() == KeyEvent.ACTION_UP) {
+            InputModeManager.get().notifyKeyEvent(event);
+        }
         boolean gamepad = InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD;
         // Swallow the ACTION_DOWN half of every owned key: if it reaches the
         // framework it moves Android's hidden geometric focus, painting extra
@@ -1215,10 +1224,12 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
                     activatePadAction();
                     return true;
                 case KeyEvent.KEYCODE_DPAD_UP:
-                    moveHostRow(-1);
+                    // T-model: Up jumps to + Add a Host from Open/Options.
+                    movePadTo(2);
                     return true;
                 case KeyEvent.KEYCODE_DPAD_DOWN:
-                    moveHostRow(1);
+                    // Down only exits Add (back to Open); walls elsewhere.
+                    if (padActionIndex == 2) movePadTo(0);
                     return true;
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
                     movePadAction(1);
@@ -1304,17 +1315,22 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         }
     }
 
-    /** Right/Left across Open / Options / + Add a Host, clamped, no wrap. */
+    /** Right/Left across Open / Options only (0..1), clamped, no wrap. */
     private void movePadAction(int delta) {
+        int next = padActionIndex + delta;
+        if (next > 1) next = 1;
+        if (next < 0) next = 0;
+        movePadTo(next);
+    }
+
+    /** Jump to a specific slot of the trio and repaint (no-op if unchanged). */
+    private void movePadTo(int slot) {
+        if (slot == padActionIndex) return;
         View[] targets = padActionTargets();
         if (targets.length == 0) return;
-        int next = padActionIndex + delta;
-        if (next < 0) next = 0;
-        if (next > targets.length - 1) next = targets.length - 1;
-        if (next != padActionIndex) {
-            padActionIndex = next;
-            paintPadFocus();
-        }
+        if (slot >= targets.length) slot = targets.length - 1;
+        padActionIndex = slot;
+        paintPadFocus();
     }
 
     /** A activates exactly the control that carries the ring. */

@@ -721,6 +721,12 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
      */
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        // Classify FIRST (see PcView): without this, press 1 after entering
+        // the picker is read one mode stale and leaks to the framework.
+        if (event.getAction() == KeyEvent.ACTION_DOWN
+                || event.getAction() == KeyEvent.ACTION_UP) {
+            InputModeManager.get().notifyKeyEvent(event);
+        }
         boolean gamepad = InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD;
         // Swallow the ACTION_DOWN half of every owned key: if it reaches the
         // framework it moves Android's hidden geometric focus, painting extra
