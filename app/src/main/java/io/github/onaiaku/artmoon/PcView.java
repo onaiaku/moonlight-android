@@ -65,6 +65,7 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements AdapterFragmentCallbacks {
     private static final int REQ_HERO_BG = 9101;
+    private static final int BACKGROUND_ID = 14;
     private HostBackgroundManager heroBgManager;
     private String heroBgPendingUuid;
     private io.github.onaiaku.artmoon.artlight.PromptBar promptBar;
@@ -210,6 +211,26 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
                 }
             });
         }
+        // PgUp / PgDn pills: page the host list (previously decorative).
+        View pgUp = findViewById(R.id.am_pg_up);
+        if (pgUp != null) {
+            pgUp.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    pageHostList(-1);
+                }
+            });
+        }
+        View pgDn = findViewById(R.id.am_pg_dn);
+        if (pgDn != null) {
+            pgDn.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    pageHostList(1);
+                }
+            });
+        }
+
         // Input-aware prompt bar: keycap pills re-render for touch / gamepad /
         // keyboard (desktop parity — prompts always tell the truth).
         promptBar = new io.github.onaiaku.artmoon.artlight.PromptBar(this);
@@ -458,6 +479,9 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
             // ArtLight Control enrollment - opt-in only (long-press the host to pair)
             menu.add(Menu.NONE, ARTLIGHT_PAIR_ID, 6, getResources().getString(R.string.pcview_menu_artlight_pair));
         }
+
+        // Per-host hero background picker (same menu the long-press uses).
+        menu.add(Menu.NONE, BACKGROUND_ID, 7, getResources().getString(R.string.pcview_menu_background));
 
         menu.add(Menu.NONE, TEST_NETWORK_ID, 5, getResources().getString(R.string.pcview_menu_test_network));
         menu.add(Menu.NONE, DELETE_ID, 6, getResources().getString(R.string.pcview_menu_delete_pc));
@@ -745,6 +769,10 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
 
             case VIEW_DETAILS_ID:
                 Dialog.displayDialog(PcView.this, getResources().getString(R.string.title_details), computer.details.toString(), false);
+                return true;
+
+            case BACKGROUND_ID:
+                showHeroBackgroundMenu(computer.details.uuid);
                 return true;
 
             case TEST_NETWORK_ID:
@@ -1152,6 +1180,14 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         return getString(R.string.am_hero_bg_set);
     }
 
+    /** Page the host GridView by one screenful; negative = up. */
+    private void pageHostList(int dir) {
+        if (pcGridView == null) return;
+        int page = Math.max(1, pcGridView.getHeight() - pcGridView.getPaddingTop()
+                - pcGridView.getPaddingBottom());
+        pcGridView.smoothScrollBy(dir * page, 300);
+    }
+
     private void refreshGridAdapter() {
         // Force the bound rows to re-render with the new background state
         if (pcGridAdapter != null) {
@@ -1249,6 +1285,12 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
                     return true;
                 case KeyEvent.KEYCODE_DPAD_LEFT:
                     movePadAction(-1);
+                    return true;
+                case KeyEvent.KEYCODE_BUTTON_L1:
+                    pageHostList(-1);
+                    return true;
+                case KeyEvent.KEYCODE_BUTTON_R1:
+                    pageHostList(1);
                     return true;
                 default:
                     break;

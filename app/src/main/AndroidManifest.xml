@@ -140,6 +140,7 @@
             android:exported="false" />
         <activity
             android:name=".preferences.AddComputerManually"
+            android:theme="@style/AmSettingsTheme"
             android:resizeableActivity="true"
             android:windowSoftInputMode="stateVisible"
             android:enableOnBackInvokedCallback="true"

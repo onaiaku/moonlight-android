@@ -8,6 +8,20 @@
     <style name="AppTheme" parent="AppBaseTheme">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
+        <item name="android:alertDialogTheme">@style/AmAlertDialogTheme</item>
+    </style>
+
+    <!--
+        AM dialog theme: every AlertDialog in the app (quit confirm, error
+        dialogs, context menus on Material) derives from this. Dark ArtMoon
+        surface instead of the stock light Android popup.
+    -->
+    <style name="AmAlertDialogTheme" parent="android:Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/am_dialog_bg</item>
+        <item name="android:colorBackground">@color/am_surface</item>
+        <item name="android:textColorPrimary">@color/am_text_primary</item>
+        <item name="android:textColorSecondary">@color/am_text_secondary</item>
+        <item name="android:colorAccent">@color/am_auth</item>
     </style>
 
     <style name="StreamBaseTheme" parent="AppBaseTheme">
