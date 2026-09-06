@@ -161,7 +161,13 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         // the picker row. "Add a host" stays reachable from the picker-row text.
         android.widget.TextView addPicker = findViewById(R.id.manuallyAddPcText);
         if (addPicker != null) {
-            addPicker.setOnFocusChangeListener((v, hasFocus) -> v.setActivated(hasFocus));
+            // Owned-model discipline: PcView.paintPadFocus() is the ONLY writer
+            // of this pill's activated state. It is clickable, which auto-grants
+            // focusability — undo that so framework focus can never park here and
+            // its state_focused ring can never light (ghost second ring).
+            addPicker.setFocusable(false);
+            addPicker.setFocusableInTouchMode(false);
+            addPicker.setClickable(true);
             addPicker.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
