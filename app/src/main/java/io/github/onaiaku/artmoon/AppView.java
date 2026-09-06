@@ -710,12 +710,19 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
      * Gamepad button mappings for the picker (matches PromptBar glyphs):
      *   Y = Settings, B = back to hosts, A = launch the selected app.
      * Intercepted before the framework so the buttons can't fall through to
-     * the grid and mis-launch. D-pad/stick navigation is untouched.
+     * the grid and mis-launch.
+     *
+     * D-pad discipline (Nik's rule): Right must go from the app list
+     * straight to Play/Resume/Stop in ONE press. The GridView normally eats
+     * the first right-presses as internal column moves (single column =
+     * invisible dead presses), so in gamepad mode we route the d-pad
+     * ourselves: Up/Down walk the app rows, Right hops to the action
+     * buttons, Left hops back to the list.
      */
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if (event.getAction() == KeyEvent.ACTION_UP
-                && InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD) {
+        boolean gamepad = InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD;
+        if (event.getAction() == KeyEvent.ACTION_UP && gamepad) {
             switch (event.getKeyCode()) {
                 case KeyEvent.KEYCODE_BUTTON_Y:
                     startActivity(new Intent(this, StreamSettings.class));
@@ -724,13 +731,75 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
                     finish();
                     return true;
                 case KeyEvent.KEYCODE_BUTTON_A:
-                    startSelectedApp();
+                    // A on a focused action button clicks THAT button (so A on
+                    // Stop stops); A elsewhere launches the selected app.
+                    View aFocus = getCurrentFocus();
+                    if (aFocus != null && aFocus.getId() == R.id.am_pick_stop) {
+                        aFocus.performClick();
+                    } else {
+                        startSelectedApp();
+                    }
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    moveListToActions(1);
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                    moveListToActions(-1);
                     return true;
                 default:
                     break;
             }
         }
         return super.dispatchKeyEvent(event);
+    }
+
+    /** The Play / Resume / Stop row of the detail panel, visible ones only. */
+    private View[] pickerActionTargets() {
+        View play = findViewById(R.id.am_pick_play);
+        View resume = findViewById(R.id.am_pick_resume);
+        View stop = findViewById(R.id.am_pick_stop);
+        java.util.List<View> targets = new java.util.ArrayList<>();
+        if (play != null && play.getVisibility() == View.VISIBLE) targets.add(play);
+        if (resume != null && resume.getVisibility() == View.VISIBLE) targets.add(resume);
+        if (stop != null && stop.getVisibility() == View.VISIBLE) targets.add(stop);
+        return targets.toArray(new View[0]);
+    }
+
+    /**
+     * Right from the app list: focus jumps to the first visible action
+     * button in ONE press. Left from an action button: back to the app
+     * list. Up/Down are left to the grid (row navigation works fine there).
+     */
+    private void moveListToActions(int direction) {
+        if (direction > 0) {
+            View[] targets = pickerActionTargets();
+            if (targets.length == 0) return;      // portrait / panel hidden
+            View focus = getCurrentFocus();
+            boolean onButton = false;
+            for (View t : targets) {
+                if (t == focus) { onButton = true; break; }
+            }
+            if (!onButton) {
+                // From the list (or anywhere else): first button takes it.
+                targets[0].requestFocus();
+                return;
+            }
+            // Already on a button: let framework handle button-to-button,
+            // but consume the press so it can never fall back into the grid.
+            View[] t2 = pickerActionTargets();
+            int idx = -1;
+            for (int i = 0; i < t2.length; i++) {
+                if (t2[i] == focus) { idx = i; break; }
+            }
+            int next = Math.min(idx + 1, t2.length - 1);
+            if (next != idx) t2[next].requestFocus();
+        } else {
+            // Left: back to the app list row that is currently selected.
+            View list = findViewById(R.id.fragmentView);
+            if (list != null) {
+                list.requestFocus();
+            }
+        }
     }
 
     private void updateDetailPanel() {

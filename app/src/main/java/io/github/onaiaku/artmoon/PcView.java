@@ -70,6 +70,8 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
     private io.github.onaiaku.artmoon.artlight.PromptBar promptBar;
     private RelativeLayout noPcFoundLayout;
     private PcGridAdapter pcGridAdapter;
+    /** The hosts grid view, captured in receiveAbsListView for d-pad routing. */
+    private AbsListView pcGridView;
     private ShortcutHelper shortcutHelper;
     private ComputerManagerService.ComputerManagerBinder managerBinder;
     private boolean freezeUpdates, runningPolling, inForeground, completeOnCreateCalled;
@@ -1159,17 +1161,35 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
      * Gamepad mappings for the hosts screen (matches PromptBar glyphs):
      *   Y = Settings, B = exit ArtMoon. A is left to the grid's normal
      *   focused-item click so pairing/context flows stay intact.
+     *
+     * D-pad discipline (Nik's rule): the ONLY selectable things on the main
+     * page are Open, Options and + Add a Host. In gamepad mode we route every
+     * d-pad press ourselves — Up/Down move the host row, Right/Left hop to
+     * Open/Options/plus-add — so focus can never silently land on the bare
+     * GridView or any other view that has no visible highlight.
      */
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if (event.getAction() == KeyEvent.ACTION_UP
-                && InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD) {
+        boolean gamepad = InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD;
+        if (event.getAction() == KeyEvent.ACTION_UP && gamepad) {
             switch (event.getKeyCode()) {
                 case KeyEvent.KEYCODE_BUTTON_Y:
                     startActivity(new Intent(this, StreamSettings.class));
                     return true;
                 case KeyEvent.KEYCODE_BUTTON_B:
                     finishAffinity();
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_UP:
+                    moveHostRow(-1);
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                    moveHostRow(1);
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    moveHeroActionFocus(1);
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                    moveHeroActionFocus(-1);
                     return true;
                 default:
                     break;
@@ -1178,8 +1198,84 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         return super.dispatchKeyEvent(event);
     }
 
+    /** Views that may hold gamepad focus on the hosts screen, in tab order. */
+    private View[] heroFocusTargets() {
+        View open = findViewById(R.id.am_action_open);
+        View options = findViewById(R.id.am_action_options);
+        View add = findViewById(R.id.manuallyAddPcText);
+        View pill = findViewById(R.id.am_picker_host_pill);
+        java.util.List<View> targets = new java.util.ArrayList<>();
+        if (open != null && open.getVisibility() == View.VISIBLE) targets.add(open);
+        if (options != null && options.getVisibility() == View.VISIBLE) targets.add(options);
+        if (add != null && add.getVisibility() == View.VISIBLE) targets.add(add);
+        else if (pill != null && pill.getVisibility() == View.VISIBLE) targets.add(pill);
+        return targets.toArray(new View[0]);
+    }
+
+    /** Index of the currently focused action target, or -1 when focus is elsewhere. */
+    private int heroFocusIndex(View[] targets) {
+        View focused = getCurrentFocus();
+        for (int i = 0; i < targets.length; i++) {
+            if (targets[i] == focused) return i;
+        }
+        return -1;
+    }
+
+    /**
+     * Up/Down flips between host cards (each row fills the viewport, so the
+     * card change is the visible feedback). Right/Left walks the action row.
+     */
+    private void moveHeroFocus(int delta) {
+        View[] targets = heroFocusTargets();
+        if (targets.length == 0) return;
+        int idx = heroFocusIndex(targets);
+        if (idx == -1) {
+            // Focus is on the grid (or nowhere): Up/Down drive the grid row
+            // (handled in moveHostRow), Right pulls focus into the action row.
+            return;
+        }
+        int next = idx + delta;
+        if (next < 0) next = 0;               // clamp: no wrap, no escape
+        if (next > targets.length - 1) next = targets.length - 1;
+        if (next != idx) targets[next].requestFocus();
+    }
+
+    /** Right/Left across Open / Options / + Add a Host. */
+    private void moveHeroActionFocus(int delta) {
+        View[] targets = heroFocusTargets();
+        if (targets.length == 0) return;
+        int idx = heroFocusIndex(targets);
+        if (idx == -1) {
+            // Coming from a host card: Right enters the action row at Open.
+            if (delta > 0) {
+                targets[0].requestFocus();
+            }
+            // Left from a host card: nothing to the left, consume.
+            return;
+        }
+        int next = idx + delta;
+        if (next < 0 || next > targets.length - 1) return; // clamp, consume
+        targets[next].requestFocus();
+    }
+
+    /** Up/Down on a host card row: flip hosts through the adapter (visible). */
+    private void moveHostRow(int delta) {
+        if (pcGridAdapter == null || pcGridAdapter.getCount() == 0) return;
+        int pos = pcGridAdapter.getFocusedPosition();
+        if (pos == AdapterView.INVALID_POSITION) pos = 0;
+        int next = pos + delta;
+        if (next < 0) next = 0;
+        if (next > pcGridAdapter.getCount() - 1) next = pcGridAdapter.getCount() - 1;
+        if (next == pos) return;              // clamped at either end
+        pcGridAdapter.setFocusedPosition(next);
+        if (pcGridView != null) {
+            pcGridView.setSelection(next);
+        }
+    }
+
     public void receiveAbsListView(AbsListView listView) {
         listView.setAdapter(pcGridAdapter);
+        pcGridView = listView;
 
         // Desktop FocusFrame parity: D-pad focus moves the accent ring, driven
         // through the adapter (same deterministic path as the picker's band).
