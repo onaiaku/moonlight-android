@@ -40,6 +40,7 @@ import android.view.ContextMenu;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.KeyEvent;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
@@ -705,6 +706,33 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
      * No-op in portrait (the panel isn't inflated) and before the adapter
      * exists. The cover comes from the same cached asset loader the rows use.
      */
+    /**
+     * Gamepad button mappings for the picker (matches PromptBar glyphs):
+     *   Y = Settings, B = back to hosts, A = launch the selected app.
+     * Intercepted before the framework so the buttons can't fall through to
+     * the grid and mis-launch. D-pad/stick navigation is untouched.
+     */
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_UP
+                && InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD) {
+            switch (event.getKeyCode()) {
+                case KeyEvent.KEYCODE_BUTTON_Y:
+                    startActivity(new Intent(this, StreamSettings.class));
+                    return true;
+                case KeyEvent.KEYCODE_BUTTON_B:
+                    finish();
+                    return true;
+                case KeyEvent.KEYCODE_BUTTON_A:
+                    startSelectedApp();
+                    return true;
+                default:
+                    break;
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
     private void updateDetailPanel() {
         View detail = findViewById(R.id.am_pick_detail);
         if (detail == null || appGridAdapter == null) {
@@ -756,8 +784,19 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
     }
 
     private void startSelectedApp() {
-        if (selectedApp != null && computer != null) {
-            ServerHelper.doStartWithCurtain(AppView.this, selectedApp.app, computer, managerBinder);
+        AppObject target = selectedApp;
+        if (target == null) {
+            // Portrait / fresh entry: fall back to the grid's focused row.
+            AbsListView grid = findViewById(R.id.fragmentView);
+            if (grid != null) {
+                int pos = grid.getSelectedItemPosition();
+                if (pos != AdapterView.INVALID_POSITION && pos < appGridAdapter.getCount()) {
+                    target = (AppObject) appGridAdapter.getItem(pos);
+                }
+            }
+        }
+        if (target != null && computer != null) {
+            ServerHelper.doStartWithCurtain(AppView.this, target.app, computer, managerBinder);
         }
     }
 

@@ -20,6 +20,7 @@ import io.github.onaiaku.artmoon.preferences.AddComputerManually;
 import io.github.onaiaku.artmoon.preferences.GlPreferences;
 import io.github.onaiaku.artmoon.preferences.PreferenceConfiguration;
 import io.github.onaiaku.artmoon.preferences.StreamSettings;
+import io.github.onaiaku.artmoon.artlight.InputModeManager;
 import io.github.onaiaku.artmoon.ui.AdapterFragment;
 import io.github.onaiaku.artmoon.ui.AdapterFragmentCallbacks;
 import io.github.onaiaku.artmoon.utils.Dialog;
@@ -43,6 +44,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.view.ContextMenu;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -1149,7 +1151,29 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         }
     }
 
+    /**
+     * Gamepad mappings for the hosts screen (matches PromptBar glyphs):
+     *   Y = Settings, B = exit ArtMoon. A is left to the grid's normal
+     *   focused-item click so pairing/context flows stay intact.
+     */
     @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_UP
+                && InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD) {
+            switch (event.getKeyCode()) {
+                case KeyEvent.KEYCODE_BUTTON_Y:
+                    startActivity(new Intent(this, StreamSettings.class));
+                    return true;
+                case KeyEvent.KEYCODE_BUTTON_B:
+                    finishAffinity();
+                    return true;
+                default:
+                    break;
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
     public void receiveAbsListView(AbsListView listView) {
         listView.setAdapter(pcGridAdapter);
         listView.setOnItemClickListener(new OnItemClickListener() {
