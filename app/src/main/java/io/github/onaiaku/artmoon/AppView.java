@@ -783,14 +783,25 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
                                     long id) {
                 AppObject app = (AppObject) appGridAdapter.getItem(pos);
 
-                // Landscape master-detail: tap selects and drives the detail
-                // panel; Play/Resume in the panel starts the stream. Portrait
-                // keeps the classic tap-to-start behaviour.
+                // Landscape master-detail (desktop parity): a tap selects,
+                // updates the detail panel AND launches immediately — exactly
+                // one interaction from list to stream. Tapping the app that is
+                // already running opens the context menu instead (Quit /
+                // Resume) so a stray tap can't re-launch it. Portrait keeps
+                // the classic tap-to-start behaviour.
                 if (findViewById(R.id.am_pick_detail) != null) {
                     selectedApp = app;
                     appGridAdapter.setSelectedApp(app);
                     appGridAdapter.notifyDataSetChanged();
                     updateDetailPanel();
+
+                    if (lastRunningAppId == app.app.getAppId()) {
+                        // Already running: menu offers Resume / Quit
+                        openContextMenu(arg1);
+                    } else {
+                        // Desktop AppsScreen.onClicked(): select + launch
+                        startSelectedApp();
+                    }
                     return;
                 }
 
@@ -856,7 +867,10 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
                 }
             });
         }
-        if (selectedApp == null && lastRunningAppId != 0) {
+        if (selectedApp == null) {
+            // Desktop parity: the preview is NEVER empty. Prefer the running
+            // app, otherwise default to the first app in the list so the
+            // detail panel is populated from the moment the screen opens.
             for (int i = 0; i < appGridAdapter.getCount(); i++) {
                 AppObject candidate = (AppObject) appGridAdapter.getItem(i);
                 if (candidate.isRunning) {
@@ -864,6 +878,11 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
                     appGridAdapter.setSelectedApp(candidate);
                     break;
                 }
+            }
+            if (selectedApp == null && appGridAdapter.getCount() > 0) {
+                AppObject first = (AppObject) appGridAdapter.getItem(0);
+                selectedApp = first;
+                appGridAdapter.setSelectedApp(first);
             }
         }
         updateDetailPanel();
