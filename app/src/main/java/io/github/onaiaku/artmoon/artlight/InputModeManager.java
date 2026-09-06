@@ -100,11 +100,17 @@ public final class InputModeManager {
         int src = event.getSource();
         boolean srcGamepad = (src & InputDevice.SOURCE_GAMEPAD) != 0
                 || (src & InputDevice.SOURCE_DPAD) != 0;
+        Mode oldMode = mode;
         if (isGamepad || isDpad || srcGamepad) {
             setMode(Mode.GAMEPAD);
         } else if (event.getSource() != InputDevice.SOURCE_UNKNOWN) {
             setMode(Mode.KEYBOARD);
         }
+        android.util.Log.d("PadFocus", "classify kc=" + event.getKeyCode()
+                + " act=" + event.getAction()
+                + " devOk=" + (dev != null)
+                + " srcGamepad=" + srcGamepad
+                + " mode=" + oldMode + "->" + mode);
         return event;
     }
 }

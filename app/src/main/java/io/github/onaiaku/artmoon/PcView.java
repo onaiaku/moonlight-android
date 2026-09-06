@@ -1290,11 +1290,21 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         View f = getCurrentFocus();
         if (f != null && f.isFocused()) f.clearFocus();
         View[] targets = padActionTargets();
-        if (targets.length == 0) return;
+        if (targets.length == 0) {
+            android.util.Log.d("PadFocus", "paint: NO TARGETS idx=" + padActionIndex);
+            return;
+        }
         if (padActionIndex >= targets.length) padActionIndex = targets.length - 1;
         View t = targets[padActionIndex];
         t.setActivated(true);
         padPainted.add(t);
+        String id = t.getId() != View.NO_ID
+                ? t.getResources().getResourceEntryName(t.getId()) : "no-id";
+        android.util.Log.d("PadFocus", "paint idx=" + padActionIndex
+                + " target=" + id
+                + " act=" + t.isActivated()
+                + " vis=" + t.getVisibility()
+                + " bg=" + (t.getBackground() != null));
     }
 
     /**
@@ -1325,6 +1335,7 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
 
     /** Jump to a specific slot of the trio and repaint (no-op if unchanged). */
     private void movePadTo(int slot) {
+        android.util.Log.d("PadFocus", "moveTo " + slot + " (was " + padActionIndex + ")");
         if (slot == padActionIndex) return;
         View[] targets = padActionTargets();
         if (targets.length == 0) return;
