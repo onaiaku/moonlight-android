@@ -1277,6 +1277,7 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         // to any bound row carrying the buttons so the 3-slot invariant never
         // collapses to fewer slots.
         View row = padRowView();
+        if (row != null && !row.isAttachedToWindow()) row = null; // ghost row from a finished poll rebuild
         if (row == null || row.findViewById(R.id.am_action_open) == null) {
             row = pcGridAdapter != null ? pcGridAdapter.getFirstBoundRowWithActions() : null;
         }
@@ -1308,12 +1309,11 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
 
     /** Paint the ring on padActionTargets()[padActionIndex], nowhere else. */
     private void paintPadFocus() {
-        for (View v : padPainted) v.setActivated(false);
-        padPainted.clear();
-        // Evict stray framework focus FIRST: a stale focused view keeps its
-        // state_focused ring alive and paints a second ring behind our back.
-        View f = getCurrentFocus();
-        if (f != null && f.isFocused()) f.clearFocus();
+        // Resolve the target FIRST. Host polling leaves stale (detached) rows
+        // in the adapter's bound-view map; painting one lights a ghost off the
+        // live hierarchy while the visible pill sits dark (Nik's flash).
+        // If the resolved target is not attached to the window, bail WITHOUT
+        // clearing anything so the live ring is never wiped by a stale paint.
         View[] targets = padActionTargets();
         if (targets.length == 0) {
             android.util.Log.d("PadFocus", "paint: NO TARGETS idx=" + padActionIndex);
@@ -1321,6 +1321,16 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         }
         if (padActionIndex >= targets.length) padActionIndex = targets.length - 1;
         View t = targets[padActionIndex];
+        if (!t.isAttachedToWindow()) {
+            android.util.Log.d("PadFocus", "paint: SKIP detached idx=" + padActionIndex);
+            return;
+        }
+        for (View v : padPainted) v.setActivated(false);
+        padPainted.clear();
+        // Evict stray framework focus FIRST: a stale focused view keeps its
+        // state_focused ring alive and paints a second ring behind our back.
+        View f = getCurrentFocus();
+        if (f != null && f.isFocused()) f.clearFocus();
         t.setActivated(true);
         padPainted.add(t);
         String id = t.getId() != View.NO_ID
