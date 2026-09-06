@@ -804,7 +804,7 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
                 if (InputModeManager.get().getMode() != InputModeManager.Mode.GAMEPAD) {
                     return;
                 }
-                if (findViewById(R.id.am_app_detail) == null) {
+                if (findViewById(R.id.appFragmentContainer) == null) {
                     return; // portrait: no master-detail pane
                 }
                 AppObject app = (AppObject) appGridAdapter.getItem(pos);
