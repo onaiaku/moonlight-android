@@ -726,7 +726,7 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
         // framework it moves Android's hidden geometric focus, painting extra
         // rings and drifting away from the owned model (two compasses).
         if (gamepad && event.getAction() == KeyEvent.ACTION_DOWN
-                && !event.isRepeat()) {
+                && event.getRepeatCount() == 0) {
             switch (event.getKeyCode()) {
                 case KeyEvent.KEYCODE_BUTTON_Y:
                 case KeyEvent.KEYCODE_BUTTON_B:
