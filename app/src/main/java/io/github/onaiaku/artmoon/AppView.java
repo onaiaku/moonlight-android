@@ -733,11 +733,16 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
                 case KeyEvent.KEYCODE_BUTTON_A:
                 case KeyEvent.KEYCODE_ENTER:
                 case KeyEvent.KEYCODE_DPAD_CENTER:
-                case KeyEvent.KEYCODE_DPAD_UP:
-                case KeyEvent.KEYCODE_DPAD_DOWN:
                 case KeyEvent.KEYCODE_DPAD_LEFT:
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
                     return true;
+                case KeyEvent.KEYCODE_DPAD_UP:
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                    // In the list zone Up/Down must reach the list (both
+                    // halves: it scrolls AND selects); from the buttons they
+                    // are owned (drop back to the list on UP).
+                    if (padListOrButton >= 0) return true;
+                    break;
                 default:
                     break;
             }
@@ -766,13 +771,17 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
                     return true;
                 case KeyEvent.KEYCODE_DPAD_UP:
                 case KeyEvent.KEYCODE_DPAD_DOWN:
-                    // Vertical is the list's job; returning to it from ANY
-                    // button puts the ring back on the app rows.
+                    // From a button: return to the list. In the list zone the
+                    // event fell through on DOWN, so the UP half must too —
+                    // the list needs both halves to scroll and select.
                     if (padListOrButton >= 0) {
                         padListOrButton = -1;
+                        restoreListRing();
                         paintPickerFocus();
+                    } else {
+                        break;  // let the list handle both halves
                     }
-                    break;
+                    return true;
                 default:
                     break;
             }
@@ -818,6 +827,12 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
             if (appGridAdapter != null) appGridAdapter.notifyDataSetChanged();
             return;
         }
+        // Button zone: exactly ONE ring on screen — strip the list's row ring
+        // so the two channels can never light two things at once.
+        if (appGridAdapter != null) {
+            appGridAdapter.setFocusedPosition(AdapterView.INVALID_POSITION);
+            appGridAdapter.notifyDataSetChanged();
+        }
         View[] targets = pickerActionTargets();
         if (targets.length == 0) {
             padListOrButton = -1;
@@ -851,6 +866,7 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
         int next = padListOrButton + delta;
         if (next < 0) {
             padListOrButton = -1;          // Left off the first button: back to the list
+            restoreListRing();
             paintPickerFocus();
             return;
         }
@@ -876,9 +892,20 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
         targets[padListOrButton].performClick();
     }
 
+    /** Re-arm the list's row ring on the selected app after leaving buttons. */
+    private void restoreListRing() {
+        AbsListView list = findViewById(R.id.fragmentView);
+        if (list != null && appGridAdapter != null) {
+            int pos = list.getSelectedItemPosition();
+            if (pos == AdapterView.INVALID_POSITION) pos = 0;
+            appGridAdapter.setFocusedPosition(pos);
+        }
+    }
+
     /** Seed the ring on the list when entering the picker in gamepad mode. */
     private void seedPickerFocus() {
         padListOrButton = -1;
+        restoreListRing();
         paintPickerFocus();
     }
 
@@ -982,6 +1009,11 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
     @Override
     public void receiveAbsListView(AbsListView listView) {
         listView.setAdapter(appGridAdapter);
+
+        // Hide the d-pad scroll bar in gamepad mode (controller-driven screen).
+        if (InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD) {
+            listView.setVerticalScrollBarEnabled(false);
+        }
 
         // Gamepad parity with desktop: when a controller drives the picker,
         // FOCUS is selection — the detail panel and blue row band follow the

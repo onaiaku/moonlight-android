@@ -118,6 +118,17 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
      * The bound row view for the currently focused position (d-pad model):
      * per-row buttons resolve inside it.
      */
+    /** Any bound row view carrying the Open button (mid-rebuild fallback). */
+    public View getFirstBoundRowWithActions() {
+        for (PcView.ComputerObject obj : itemList) {
+            View v = boundViews.get(obj.details.uuid);
+            if (v != null && v.findViewById(R.id.am_action_open) != null) {
+                return v;
+            }
+        }
+        return null;
+    }
+
     public View getFocusedRowView() {
         if (focusedPosition == android.widget.AdapterView.INVALID_POSITION
                 || focusedPosition < 0 || focusedPosition >= itemList.size()) {

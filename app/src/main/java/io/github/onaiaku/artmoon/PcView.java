@@ -1249,7 +1249,13 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
 
     /** Visible action targets in tab order: Open, Options, + Add a Host. */
     private View[] padActionTargets() {
+        // The row view may be unbound mid-rebuild (host polling) — fall back
+        // to any bound row carrying the buttons so the 3-slot invariant never
+        // collapses to fewer slots.
         View row = padRowView();
+        if (row == null || row.findViewById(R.id.am_action_open) == null) {
+            row = pcGridAdapter != null ? pcGridAdapter.getFirstBoundRowWithActions() : null;
+        }
         View open = row != null ? row.findViewById(R.id.am_action_open)
                                 : findViewById(R.id.am_action_open);
         View options = row != null ? row.findViewById(R.id.am_action_options)
@@ -1337,6 +1343,18 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         listView.setAdapter(pcGridAdapter);
         pcGridView = listView;
 
+        // Host polling rebuilds rows every few seconds; the painted ring can
+        // land on stale view objects and evaporate. Repaint after every data
+        // change so exactly one of Open/Options/+Add is ALWAYS lit.
+        pcGridAdapter.registerDataSetObserver(new android.database.DataSetObserver() {
+            @Override
+            public void onChanged() {
+                if (pcGridView != null) {
+                    pcGridView.post(PcView.this::paintPadFocus);
+                }
+            }
+        });
+
         // Desktop FocusFrame parity: D-pad focus moves the accent ring, driven
         // through the adapter (same deterministic path as the picker's band).
         listView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -1376,6 +1394,11 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         });
         UiHelper.applyStatusBarPadding(listView);
         registerForContextMenu(listView);
+        // The d-pad scroll bar flickering up during navigation is noise on a
+        // controller-driven screen; keep it for touch, hide it in gamepad mode.
+        if (InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD) {
+            listView.setVerticalScrollBarEnabled(false);
+        }
     }
 
     public static class ComputerObject {
