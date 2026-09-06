@@ -93,7 +93,14 @@ public final class InputModeManager {
         // those as gamepad too (same UI implications: focus nav + glyphs).
         boolean isDpad = dev != null
                 && (dev.getSources() & InputDevice.SOURCE_DPAD) != 0;
-        if (isGamepad || isDpad) {
+        // Device lookup can fail (BT reconnects, virtual/emulated pads, some
+        // TV remotes). The event itself always carries its true source, so
+        // trust it as an equal signal — never demote a gamepad press to
+        // KEYBOARD just because the device record went missing.
+        int src = event.getSource();
+        boolean srcGamepad = (src & InputDevice.SOURCE_GAMEPAD) != 0
+                || (src & InputDevice.SOURCE_DPAD) != 0;
+        if (isGamepad || isDpad || srcGamepad) {
             setMode(Mode.GAMEPAD);
         } else if (event.getSource() != InputDevice.SOURCE_UNKNOWN) {
             setMode(Mode.KEYBOARD);
