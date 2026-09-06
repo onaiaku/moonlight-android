@@ -1294,6 +1294,18 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
 
     private final java.util.List<View> padPainted = new java.util.ArrayList<>();
 
+    /**
+     * Bind-time repaint hook: called by PcGridAdapter.getView() the moment a
+     * fresh row exists. Synchronous (no post) so the ring is painted into the
+     * same frame that binds the row — poll rebinds can never show a dark frame
+     * (the "flashing" Nik reported) and keypresses never paint a row the poll
+     * is about to detach. PcView remains the SINGLE writer; this is just an
+     * earlier trigger for the same paint.
+     */
+    public void syncPadFocusNow() {
+        paintPadFocus();
+    }
+
     /** Paint the ring on padActionTargets()[padActionIndex], nowhere else. */
     private void paintPadFocus() {
         for (View v : padPainted) v.setActivated(false);

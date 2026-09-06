@@ -83,6 +83,15 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
         if (obj != null) {
             boundViews.put(obj.details.uuid, v);
         }
+        // Bind-time ring: the row is fresh (poll rebinds wipe activated state),
+        // so have PcView's single writer repaint NOW, synchronously, before
+        // this frame draws. Removes the one-frame dark gap that made the ring
+        // flash at poll rhythm and keypresses feel sluggish. (This does NOT
+        // re-add adapter-side painting — PcView.paintPadFocus still decides
+        // everything; we only call it at the earliest possible moment.)
+        if (pcView != null) {
+            pcView.syncPadFocusNow();
+        }
         return v;
     }
 
