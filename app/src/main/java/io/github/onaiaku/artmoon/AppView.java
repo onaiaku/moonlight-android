@@ -731,27 +731,45 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
                     finish();
                     return true;
                 case KeyEvent.KEYCODE_BUTTON_A:
-                    // A on a focused action button clicks THAT button (so A on
-                    // Stop stops); A elsewhere launches the selected app.
-                    View aFocus = getCurrentFocus();
-                    if (aFocus != null && aFocus.getId() == R.id.am_pick_stop) {
-                        aFocus.performClick();
-                    } else {
-                        startSelectedApp();
-                    }
+                case KeyEvent.KEYCODE_ENTER:
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                    // A activates exactly what carries the ring: on an action
+                    // button it clicks THAT button (A on Stop stops); on the
+                    // list it launches the selected app.
+                    activatePickerAction();
                     return true;
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
-                    moveListToActions(1);
+                    movePickerFocus(1);
                     return true;
                 case KeyEvent.KEYCODE_DPAD_LEFT:
-                    moveListToActions(-1);
+                    movePickerFocus(-1);
                     return true;
+                case KeyEvent.KEYCODE_DPAD_UP:
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                    // Vertical is the list's job; returning to it from ANY
+                    // button puts the ring back on the app rows.
+                    if (padListOrButton >= 0) {
+                        padListOrButton = -1;
+                        paintPickerFocus();
+                    }
+                    break;
                 default:
                     break;
             }
         }
         return super.dispatchKeyEvent(event);
     }
+
+    // ---- Owned gamepad focus model (desktop FocusFrame parity) -------------
+    // The picker has exactly two focus zones: the app list (-1) and the
+    // visible action buttons (0..n-1 = Play/Resume/Stop in tab order). One
+    // owned integer per zone state — we NEVER ask the framework where focus
+    // is and NEVER call requestFocus in gamepad mode. Right/Left walk the
+    // visible buttons strictly by index, so Play -> Resume -> Stop exactly,
+    // clamped at both ends. Views are dumb paint targets via setActivated.
+
+    /** -1 = app list, otherwise index into the visible action buttons. */
+    private int padListOrButton = -1;
 
     /** The Play / Resume / Stop row of the detail panel, visible ones only. */
     private View[] pickerActionTargets() {
@@ -765,44 +783,86 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
         return targets.toArray(new View[0]);
     }
 
+    private final java.util.List<View> padPaintedButtons = new java.util.ArrayList<>();
+
     /**
-     * Right from the app list: focus jumps to the first visible action
-     * button in ONE press. Left from an action button: back to the app
-     * list. Up/Down are left to the grid (row navigation works fine there).
+     * Paint the ring: on the focused app row (zone -1) or on the focused
+     * action button (zone >= 0). Only one thing carries the ring at a time.
      */
-    private void moveListToActions(int direction) {
-        if (direction > 0) {
-            View[] targets = pickerActionTargets();
-            if (targets.length == 0) return;      // portrait / panel hidden
-            View focus = getCurrentFocus();
-            boolean onButton = false;
-            for (View t : targets) {
-                if (t == focus) { onButton = true; break; }
+    private void paintPickerFocus() {
+        for (View v : padPaintedButtons) v.setActivated(false);
+        padPaintedButtons.clear();
+        if (padListOrButton < 0) {
+            // List zone: the grid adapter paints the row ring from
+            // focusedPosition (set in the selection listener).
+            if (appGridAdapter != null) appGridAdapter.notifyDataSetChanged();
+            return;
+        }
+        View[] targets = pickerActionTargets();
+        if (targets.length == 0) {
+            padListOrButton = -1;
+            return;
+        }
+        if (padListOrButton >= targets.length) padListOrButton = targets.length - 1;
+        View t = targets[padListOrButton];
+        t.setActivated(true);
+        padPaintedButtons.add(t);
+    }
+
+    /**
+     * Right/Left: from the list, Right enters the button row at the FIRST
+     * button; on the buttons, index +/- 1 strictly through visible buttons,
+     * clamped; Left at the first button drops back to the list; Left on the
+     * list does nothing.
+     */
+    private void movePickerFocus(int delta) {
+        View[] targets = pickerActionTargets();
+        if (padListOrButton < 0) {
+            if (delta > 0 && targets.length > 0) {
+                padListOrButton = 0;
+                paintPickerFocus();
             }
-            if (!onButton) {
-                // From the list (or anywhere else): first button takes it.
-                targets[0].requestFocus();
-                return;
-            }
-            // Already on a button: let framework handle button-to-button,
-            // but consume the press so it can never fall back into the grid.
-            View[] t2 = pickerActionTargets();
-            int idx = -1;
-            for (int i = 0; i < t2.length; i++) {
-                if (t2[i] == focus) { idx = i; break; }
-            }
-            int next = Math.min(idx + 1, t2.length - 1);
-            if (next != idx) t2[next].requestFocus();
-        } else {
-            // Left: back to the app list row that is currently selected.
-            View list = findViewById(R.id.fragmentView);
-            if (list != null) {
-                list.requestFocus();
-            }
+            return;
+        }
+        if (targets.length == 0) {
+            padListOrButton = -1;
+            return;
+        }
+        int next = padListOrButton + delta;
+        if (next < 0) {
+            padListOrButton = -1;          // Left off the first button: back to the list
+            paintPickerFocus();
+            return;
+        }
+        if (next > targets.length - 1) next = targets.length - 1;  // clamp right end
+        if (next != padListOrButton) {
+            padListOrButton = next;
+            paintPickerFocus();
         }
     }
 
-    private void updateDetailPanel() {
+    /** A activates exactly what carries the ring. */
+    private void activatePickerAction() {
+        if (padListOrButton < 0) {
+            startSelectedApp();
+            return;
+        }
+        View[] targets = pickerActionTargets();
+        if (targets.length == 0) {
+            startSelectedApp();
+            return;
+        }
+        if (padListOrButton >= targets.length) padListOrButton = targets.length - 1;
+        targets[padListOrButton].performClick();
+    }
+
+    /** Seed the ring on the list when entering the picker in gamepad mode. */
+    private void seedPickerFocus() {
+        padListOrButton = -1;
+        paintPickerFocus();
+    }
+
+        private void updateDetailPanel() {
         View detail = findViewById(R.id.am_pick_detail);
         if (detail == null || appGridAdapter == null) {
             return;

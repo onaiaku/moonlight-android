@@ -72,6 +72,8 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
     private PcGridAdapter pcGridAdapter;
     /** The hosts grid view, captured in receiveAbsListView for d-pad routing. */
     private AbsListView pcGridView;
+    /** Owned gamepad focus: 0 = Open, 1 = Options, 2 = + Add a Host / Pair. */
+    private int padActionIndex = 0;
     private ShortcutHelper shortcutHelper;
     private ComputerManagerService.ComputerManagerBinder managerBinder;
     private boolean freezeUpdates, runningPolling, inForeground, completeOnCreateCalled;
@@ -367,6 +369,12 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
 
         inForeground = true;
         startComputerUpdates();
+
+        // Gamepad: seed the ring on Open (or + Add a Host with no hosts) as
+        // soon as layout is ready — never launch with nothing highlighted.
+        if (InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD) {
+            seedPadFocus();
+        }
     }
 
     @Override
@@ -1179,6 +1187,13 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
                 case KeyEvent.KEYCODE_BUTTON_B:
                     finishAffinity();
                     return true;
+                case KeyEvent.KEYCODE_BUTTON_A:
+                case KeyEvent.KEYCODE_ENTER:
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                    // A activates exactly what carries the ring (owned model).
+                    paintPadFocus();
+                    activatePadAction();
+                    return true;
                 case KeyEvent.KEYCODE_DPAD_UP:
                     moveHostRow(-1);
                     return true;
@@ -1186,10 +1201,10 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
                     moveHostRow(1);
                     return true;
                 case KeyEvent.KEYCODE_DPAD_RIGHT:
-                    moveHeroActionFocus(1);
+                    movePadAction(1);
                     return true;
                 case KeyEvent.KEYCODE_DPAD_LEFT:
-                    moveHeroActionFocus(-1);
+                    movePadAction(-1);
                     return true;
                 default:
                     break;
@@ -1198,64 +1213,86 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         return super.dispatchKeyEvent(event);
     }
 
-    /** Views that may hold gamepad focus on the hosts screen, in tab order. */
-    private View[] heroFocusTargets() {
-        View open = findViewById(R.id.am_action_open);
-        View options = findViewById(R.id.am_action_options);
+    // ---- Owned gamepad focus model (desktop FocusFrame parity) -------------
+    // padActionIndex is the SINGLE source of truth for which control carries
+    // the ring: 0 = Open, 1 = Options, 2 = + Add a Host / Pair. We never ask
+    // the framework where focus is and never call requestFocus in gamepad
+    // mode — Android's focus search is geometric and unreliable on a
+    // touch-first screen with no seeded focus. Views are dumb paint targets
+    // driven by setActivated.
+
+    /** The focused host row's card view (per-row buttons resolve inside it). */
+    private View padRowView() {
+        if (pcGridAdapter == null || pcGridAdapter.getCount() == 0) return null;
+        return pcGridAdapter.getFocusedRowView();
+    }
+
+    /** Visible action targets in tab order: Open, Options, + Add a Host. */
+    private View[] padActionTargets() {
+        View row = padRowView();
+        View open = row != null ? row.findViewById(R.id.am_action_open)
+                                : findViewById(R.id.am_action_open);
+        View options = row != null ? row.findViewById(R.id.am_action_options)
+                                   : findViewById(R.id.am_action_options);
         View add = findViewById(R.id.manuallyAddPcText);
-        View pill = findViewById(R.id.am_picker_host_pill);
         java.util.List<View> targets = new java.util.ArrayList<>();
         if (open != null && open.getVisibility() == View.VISIBLE) targets.add(open);
         if (options != null && options.getVisibility() == View.VISIBLE) targets.add(options);
         if (add != null && add.getVisibility() == View.VISIBLE) targets.add(add);
-        else if (pill != null && pill.getVisibility() == View.VISIBLE) targets.add(pill);
         return targets.toArray(new View[0]);
     }
 
-    /** Index of the currently focused action target, or -1 when focus is elsewhere. */
-    private int heroFocusIndex(View[] targets) {
-        View focused = getCurrentFocus();
-        for (int i = 0; i < targets.length; i++) {
-            if (targets[i] == focused) return i;
-        }
-        return -1;
+    private final java.util.List<View> padPainted = new java.util.ArrayList<>();
+
+    /** Paint the ring on padActionTargets()[padActionIndex], nowhere else. */
+    private void paintPadFocus() {
+        for (View v : padPainted) v.setActivated(false);
+        padPainted.clear();
+        View[] targets = padActionTargets();
+        if (targets.length == 0) return;
+        if (padActionIndex >= targets.length) padActionIndex = targets.length - 1;
+        View t = targets[padActionIndex];
+        t.setActivated(true);
+        padPainted.add(t);
     }
 
     /**
-     * Up/Down flips between host cards (each row fills the viewport, so the
-     * card change is the visible feedback). Right/Left walks the action row.
+     * Seed the ring at launch: Open when a host exists, + Add a Host / Pair
+     * when none does (Nik's rule). Runs after layout via post().
      */
-    private void moveHeroFocus(int delta) {
-        View[] targets = heroFocusTargets();
-        if (targets.length == 0) return;
-        int idx = heroFocusIndex(targets);
-        if (idx == -1) {
-            // Focus is on the grid (or nowhere): Up/Down drive the grid row
-            // (handled in moveHostRow), Right pulls focus into the action row.
-            return;
+    private void seedPadFocus() {
+        padActionIndex = 0;
+        if (pcGridAdapter != null && pcGridAdapter.getCount() > 0
+                && pcGridAdapter.getFocusedPosition() == AdapterView.INVALID_POSITION) {
+            pcGridAdapter.setFocusedPosition(0);
+            if (pcGridView != null) pcGridView.setSelection(0);
         }
-        int next = idx + delta;
-        if (next < 0) next = 0;               // clamp: no wrap, no escape
-        if (next > targets.length - 1) next = targets.length - 1;
-        if (next != idx) targets[next].requestFocus();
+        if (pcGridView != null) {
+            pcGridView.post(this::paintPadFocus);
+        } else {
+            paintPadFocus();
+        }
     }
 
-    /** Right/Left across Open / Options / + Add a Host. */
-    private void moveHeroActionFocus(int delta) {
-        View[] targets = heroFocusTargets();
+    /** Right/Left across Open / Options / + Add a Host, clamped, no wrap. */
+    private void movePadAction(int delta) {
+        View[] targets = padActionTargets();
         if (targets.length == 0) return;
-        int idx = heroFocusIndex(targets);
-        if (idx == -1) {
-            // Coming from a host card: Right enters the action row at Open.
-            if (delta > 0) {
-                targets[0].requestFocus();
-            }
-            // Left from a host card: nothing to the left, consume.
-            return;
+        int next = padActionIndex + delta;
+        if (next < 0) next = 0;
+        if (next > targets.length - 1) next = targets.length - 1;
+        if (next != padActionIndex) {
+            padActionIndex = next;
+            paintPadFocus();
         }
-        int next = idx + delta;
-        if (next < 0 || next > targets.length - 1) return; // clamp, consume
-        targets[next].requestFocus();
+    }
+
+    /** A activates exactly the control that carries the ring. */
+    private void activatePadAction() {
+        View[] targets = padActionTargets();
+        if (targets.length == 0) return;
+        if (padActionIndex >= targets.length) padActionIndex = targets.length - 1;
+        targets[padActionIndex].performClick();
     }
 
     /** Up/Down on a host card row: flip hosts through the adapter (visible). */
@@ -1270,6 +1307,9 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         pcGridAdapter.setFocusedPosition(next);
         if (pcGridView != null) {
             pcGridView.setSelection(next);
+            // Buttons live inside the row view, which binds during the next
+            // layout pass — repaint after it lands.
+            pcGridView.post(this::paintPadFocus);
         }
     }
 
@@ -1283,6 +1323,12 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
             @Override
             public void onItemSelected(AdapterView<?> arg0, View arg1, int pos, long id) {
                 pcGridAdapter.setFocusedPosition(pos);
+                // Hosts arrive asynchronously — repaint the action ring so
+                // Open exists on the freshly bound row before any keypress.
+                if (InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD
+                        && arg0 != null) {
+                    arg0.post(PcView.this::paintPadFocus);
+                }
             }
 
             @Override

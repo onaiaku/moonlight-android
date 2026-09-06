@@ -114,6 +114,19 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
         });
     }
 
+    /**
+     * The bound row view for the currently focused position (d-pad model):
+     * per-row buttons resolve inside it.
+     */
+    public View getFocusedRowView() {
+        if (focusedPosition == android.widget.AdapterView.INVALID_POSITION
+                || focusedPosition < 0 || focusedPosition >= itemList.size()) {
+            return null;
+        }
+        PcView.ComputerObject obj = itemList.get(focusedPosition);
+        return boundViews.get(obj.details.uuid);
+    }
+
     public View getViewForComputer(String uuid) {
         return boundViews.get(uuid);
     }
