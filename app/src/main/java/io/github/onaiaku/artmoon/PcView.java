@@ -1276,8 +1276,20 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         // The row view may be unbound mid-rebuild (host polling) — fall back
         // to any bound row carrying the buttons so the 3-slot invariant never
         // collapses to fewer slots.
-        View row = padRowView();
-        if (row != null && !row.isAttachedToWindow()) row = null; // ghost row from a finished poll rebuild
+        View row = null;
+        // Prefer a LIVE row from the GridView's attached children. The
+        // adapter's boundViews map can hold a stale view that never attaches
+        // (measure-pass bind), which made paints spin in SKIP-retry loops.
+        // GridView children are always attached when visible.
+        if (pcGridView != null) {
+            for (int i = 0; i < pcGridView.getChildCount(); i++) {
+                View c = pcGridView.getChildAt(i);
+                if (c != null && c.isAttachedToWindow()
+                        && c.findViewById(R.id.am_action_open) != null) { row = c; break; }
+            }
+        }
+        if (row == null) row = padRowView();
+        if (row != null && !row.isAttachedToWindow()) row = null; // ghost from the map
         if (row == null || row.findViewById(R.id.am_action_open) == null) {
             row = pcGridAdapter != null ? pcGridAdapter.getFirstBoundRowWithActions() : null;
         }

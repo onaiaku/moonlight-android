@@ -133,7 +133,7 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
     public View getFirstBoundRowWithActions() {
         for (PcView.ComputerObject obj : itemList) {
             View v = boundViews.get(obj.details.uuid);
-            if (v != null && v.findViewById(R.id.am_action_open) != null) {
+            if (v != null && v.isAttachedToWindow() && v.findViewById(R.id.am_action_open) != null) {
                 return v;
             }
         }
