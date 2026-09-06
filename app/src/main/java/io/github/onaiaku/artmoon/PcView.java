@@ -1274,6 +1274,10 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
     private void paintPadFocus() {
         for (View v : padPainted) v.setActivated(false);
         padPainted.clear();
+        // Evict stray framework focus FIRST: a stale focused view keeps its
+        // state_focused ring alive and paints a second ring behind our back.
+        View f = getCurrentFocus();
+        if (f != null && f.isFocused()) f.clearFocus();
         View[] targets = padActionTargets();
         if (targets.length == 0) return;
         if (padActionIndex >= targets.length) padActionIndex = targets.length - 1;

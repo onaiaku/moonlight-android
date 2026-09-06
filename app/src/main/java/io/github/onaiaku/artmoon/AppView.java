@@ -738,11 +738,9 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
                     return true;
                 case KeyEvent.KEYCODE_DPAD_UP:
                 case KeyEvent.KEYCODE_DPAD_DOWN:
-                    // In the list zone Up/Down must reach the list (both
-                    // halves: it scrolls AND selects); from the buttons they
-                    // are owned (drop back to the list on UP).
-                    if (padListOrButton >= 0) return true;
-                    break;
+                    // Fully owned: the list is driven via setSelection, the
+                    // framework never sees a single half of these.
+                    return true;
                 default:
                     break;
             }
@@ -771,15 +769,14 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
                     return true;
                 case KeyEvent.KEYCODE_DPAD_UP:
                 case KeyEvent.KEYCODE_DPAD_DOWN:
-                    // From a button: return to the list. In the list zone the
-                    // event fell through on DOWN, so the UP half must too —
-                    // the list needs both halves to scroll and select.
                     if (padListOrButton >= 0) {
+                        // From a button: back to the list.
                         padListOrButton = -1;
                         restoreListRing();
                         paintPickerFocus();
                     } else {
-                        break;  // let the list handle both halves
+                        // List zone: scroll + select, fully owned.
+                        movePadList(event.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN ? 1 : -1);
                     }
                     return true;
                 default:
@@ -799,6 +796,8 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
 
     /** -1 = app list, otherwise index into the visible action buttons. */
     private int padListOrButton = -1;
+    /** Owned list index — the list is driven via setSelection, never focus. */
+    private int padListIndex = 0;
 
     /** The Play / Resume / Stop row of the detail panel, visible ones only. */
     private View[] pickerActionTargets() {
@@ -822,9 +821,11 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
         for (View v : padPaintedButtons) v.setActivated(false);
         padPaintedButtons.clear();
         if (padListOrButton < 0) {
-            // List zone: the grid adapter paints the row ring from
-            // focusedPosition (set in the selection listener).
+            // List zone: adapter paints the row ring from focusedPosition.
             if (appGridAdapter != null) appGridAdapter.notifyDataSetChanged();
+            // Evict any stray framework focus (stale ring painter).
+            View f = getCurrentFocus();
+            if (f != null) f.clearFocus();
             return;
         }
         // Button zone: exactly ONE ring on screen — strip the list's row ring
@@ -833,6 +834,9 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
             appGridAdapter.setFocusedPosition(AdapterView.INVALID_POSITION);
             appGridAdapter.notifyDataSetChanged();
         }
+        // Evict stray framework focus in the button zone too.
+        View f2 = getCurrentFocus();
+        if (f2 != null) f2.clearFocus();
         View[] targets = pickerActionTargets();
         if (targets.length == 0) {
             padListOrButton = -1;
@@ -892,19 +896,41 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
         targets[padListOrButton].performClick();
     }
 
-    /** Re-arm the list's row ring on the selected app after leaving buttons. */
+    /** Re-arm the list's row ring on the owned list index. */
     private void restoreListRing() {
-        AbsListView list = findViewById(R.id.fragmentView);
-        if (list != null && appGridAdapter != null) {
-            int pos = list.getSelectedItemPosition();
-            if (pos == AdapterView.INVALID_POSITION) pos = 0;
-            appGridAdapter.setFocusedPosition(pos);
+        if (appGridAdapter != null) {
+            if (padListIndex < 0 || padListIndex >= appGridAdapter.getCount()) {
+                padListIndex = 0;
+            }
+            appGridAdapter.setFocusedPosition(padListIndex);
         }
+    }
+
+    /** Owned list scroll: move, clamp, repaint. The framework is not involved. */
+    private void movePadList(int delta) {
+        if (appGridAdapter == null || appGridAdapter.getCount() == 0) return;
+        int next = padListIndex + delta;
+        if (next < 0) next = 0;
+        if (next > appGridAdapter.getCount() - 1) next = appGridAdapter.getCount() - 1;
+        if (next == padListIndex) return;
+        padListIndex = next;
+        AbsListView list = findViewById(R.id.fragmentView);
+        if (list != null) list.setSelection(next);   // scrolls, no focus
+        selectedApp = (AppObject) appGridAdapter.getItem(next);
+        appGridAdapter.setSelectedApp(selectedApp);
+        appGridAdapter.setFocusedPosition(next);
+        appGridAdapter.notifyDataSetChanged();
+        updateDetailPanel();
     }
 
     /** Seed the ring on the list when entering the picker in gamepad mode. */
     private void seedPickerFocus() {
         padListOrButton = -1;
+        AbsListView list = findViewById(R.id.fragmentView);
+        if (list != null) {
+            int pos = list.getSelectedItemPosition();
+            if (pos != AdapterView.INVALID_POSITION) padListIndex = pos;
+        }
         restoreListRing();
         paintPickerFocus();
     }
