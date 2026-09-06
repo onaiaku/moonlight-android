@@ -113,6 +113,7 @@ public class HostMetricsPoller {
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
+                        pollInFlight = false; // cycle complete: allow the next poll even on error replies
                         if (!running) {
                             return;
                         }
@@ -139,6 +140,7 @@ public class HostMetricsPoller {
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
+                        pollInFlight = false; // cycle complete: allow the next poll even on error replies
                         if (!running) {
                             return;
                         }

@@ -369,6 +369,21 @@ public class AppView extends io.github.onaiaku.artmoon.ArtMoonActivity implement
         // Desktop header treatment: host name in caps with the online badge beside it.
         label.setText(computerName.toUpperCase());
 
+// ArtMoon picker spec chips (mirror of hero-card chips, PcGridAdapter source).
+TextView pickRes = findViewById(R.id.am_pick_spec_res);
+TextView pickFps = findViewById(R.id.am_pick_spec_fps);
+TextView pickBitrate = findViewById(R.id.am_pick_spec_bitrate);
+TextView pickCodec = findViewById(R.id.am_pick_spec_codec);
+TextView pickAudio = findViewById(R.id.am_pick_spec_audio);
+if (pickRes != null && pickFps != null && pickBitrate != null) {
+    PreferenceConfiguration prefs = PreferenceConfiguration.readPreferences(this);
+    pickRes.setText(prefs.width + "\u00d7" + prefs.height);
+    pickFps.setText(prefs.fps + " FPS");
+    pickBitrate.setText((prefs.bitrate + 999) / 1000 + " Mbps");
+    if (pickCodec != null) pickCodec.setText(codecLabel(prefs.videoFormat));
+    if (pickAudio != null) pickAudio.setText(audioLabel(prefs.audioConfiguration));
+}
+
         // ArtMoon header back button (desktop header affordance).
         ImageButton backButton = findViewById(R.id.am_back);
         if (backButton != null) {
@@ -911,5 +926,18 @@ public class AppView extends io.github.onaiaku.artmoon.ArtMoonActivity implement
         public String toString() {
             return app.getAppName();
         }
+    }
+
+    private static String codecLabel(PreferenceConfiguration.FormatOption fmt) {
+        if (fmt == PreferenceConfiguration.FormatOption.FORCE_AV1) return "AV1";
+        if (fmt == PreferenceConfiguration.FormatOption.FORCE_HEVC) return "HEVC";
+        if (fmt == PreferenceConfiguration.FormatOption.FORCE_H264) return "H.264";
+        return "Auto";
+    }
+
+    private static String audioLabel(io.github.onaiaku.artmoon.nvstream.jni.MoonBridge.AudioConfiguration audio) {
+        if (audio == io.github.onaiaku.artmoon.nvstream.jni.MoonBridge.AUDIO_CONFIGURATION_51_SURROUND) return "5.1";
+        if (audio == io.github.onaiaku.artmoon.nvstream.jni.MoonBridge.AUDIO_CONFIGURATION_71_SURROUND) return "7.1";
+        return "Stereo";
     }
 }
