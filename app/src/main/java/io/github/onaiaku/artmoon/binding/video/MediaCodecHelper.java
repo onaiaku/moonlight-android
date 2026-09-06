@@ -876,6 +876,55 @@ public class MediaCodecHelper {
         return null;
     }
     
+    /**
+     * Reports the maximum stream size the HARDWARE decoder for the requested
+     * resolution can handle, across AVC/HEVC/AV1 (whichever decoders exist).
+     * Returns null if no hardware decoder exists or sizes can't be queried.
+     * Used to clamp native-resolution streams so MediaCodec.configure() doesn't
+     * die with ERROR_UNSUPPORTED on devices whose decoders cap below the panel
+     * size (e.g. 1920x1088 limits on a 1200x2000 tablet).
+     */
+    public static android.util.Pair<Integer, Integer> getHardwareMaxStreamSize(int reqW, int reqH) {
+        int maxW = -1, maxH = -1;
+        String[] mimeTypes = {"video/avc", "video/hevc", "video/av01"};
+        for (String mime : mimeTypes) {
+            MediaCodecInfo info = findProbableSafeDecoder(mime, -1);
+            if (info == null || !info.isHardwareAccelerated()) {
+                continue;
+            }
+            try {
+                MediaCodecInfo.VideoCapabilities caps = info.getCapabilitiesForType(mime).getVideoCapabilities();
+                if (caps.areSizeAndRateSupported(reqW, reqH, 30) ||
+                    caps.areSizeAndRateSupported(reqH, reqW, 30)) {
+                    // Requested size (either orientation) is fine as-is
+                    return null;
+                }
+                // Per-axis maxima from the decoder's supported ranges.
+                int capMaxW = caps.getSupportedWidths().getUpper();
+                int capMaxH = caps.getSupportedHeights().getUpper();
+                if (capMaxW * capMaxH > maxW * maxH) {
+                    maxW = capMaxW;
+                    maxH = capMaxH;
+                }
+            } catch (IllegalArgumentException e) {
+                // Codec can't handle the requested size at all; still record its max
+                try {
+                    MediaCodecInfo.VideoCapabilities caps = info.getCapabilitiesForType(mime).getVideoCapabilities();
+                    int capMaxW = caps.getSupportedWidths().getUpper();
+                    int capMaxH = caps.getSupportedHeights().getUpper();
+                    if (capMaxW * capMaxH > maxW * maxH) {
+                        maxW = capMaxW;
+                        maxH = capMaxH;
+                    }
+                } catch (Exception ignore) {}
+            }
+        }
+        if (maxW <= 0 || maxH <= 0) {
+            return null;
+        }
+        return new android.util.Pair<>(maxW, maxH);
+    }
+
     public static MediaCodecInfo findProbableSafeDecoder(String mimeType, int requiredProfile) {
         // First look for a preferred decoder by name
         MediaCodecInfo info = findPreferredDecoder();

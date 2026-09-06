@@ -468,6 +468,28 @@ public class Game extends Activity implements SurfaceHolder.Callback,
             }
         }
 
+        // Clamp the requested stream resolution to the hardware decoder's real
+        // size limits. Some tablets (e.g. MatePad's qcom avc/hevc decoders) cap
+        // at 1920x1088, so a native portrait 1200x2000 request otherwise dies in
+        // MediaCodec.configure() with ERROR_UNSUPPORTED (-1010) on every codec.
+        try {
+            int reqW = prefConfig.width, reqH = prefConfig.height;
+            android.util.Pair<Integer, Integer> maxHw = io.github.onaiaku.artmoon.binding.video.MediaCodecHelper.getHardwareMaxStreamSize(reqW, reqH);
+            if (maxHw != null && (reqW > maxHw.first || reqH > maxHw.second)) {
+                // Per-axis caps in the requested orientation, keeping aspect.
+                double scale = Math.min((double) maxHw.first / reqW, (double) maxHw.second / reqH);
+                int newW = Math.max(256, (int) (reqW * scale) & ~15);
+                int newH = Math.max(256, (int) (reqH * scale) & ~15);
+                LimeLog.warning("Requested stream resolution " + reqW + "x" + reqH +
+                        " exceeds hardware decoder limits " + maxHw.first + "x" + maxHw.second +
+                        "; clamping to " + newW + "x" + newH);
+                prefConfig.width = newW;
+                prefConfig.height = newH;
+            }
+        } catch (Exception e) {
+            LimeLog.warning("Could not query decoder size limits: " + e);
+        }
+
         StreamConfiguration config = new StreamConfiguration.Builder()
                 .setResolution(prefConfig.width, prefConfig.height)
                 .setLaunchRefreshRate(prefConfig.fps)

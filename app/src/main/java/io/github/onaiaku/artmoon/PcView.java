@@ -157,6 +157,7 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         // the picker row. "Add a host" stays reachable from the picker-row text.
         android.widget.TextView addPicker = findViewById(R.id.manuallyAddPcText);
         if (addPicker != null) {
+            addPicker.setOnFocusChangeListener((v, hasFocus) -> v.setActivated(hasFocus));
             addPicker.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -1042,6 +1043,8 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         }
         View open = cardView.findViewById(R.id.am_action_open);
         if (open != null) {
+            // Desktop FocusFrame parity: paint the ring on keyboard/pad focus.
+            open.setOnFocusChangeListener((v, hasFocus) -> v.setActivated(hasFocus));
             open.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -1058,6 +1061,7 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         }
         View options = cardView.findViewById(R.id.am_action_options);
         if (options != null) {
+            options.setOnFocusChangeListener((v, hasFocus) -> v.setActivated(hasFocus));
             options.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {

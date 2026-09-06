@@ -908,6 +908,7 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
         // Reselect whatever is running so the panel starts populated.
         View playBtn = findViewById(R.id.am_pick_play);
         if (playBtn != null) {
+            playBtn.setOnFocusChangeListener((v, hasFocus) -> v.setActivated(hasFocus));
             playBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -917,6 +918,7 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
         }
         View resumeBtn = findViewById(R.id.am_pick_resume);
         if (resumeBtn != null) {
+            resumeBtn.setOnFocusChangeListener((v, hasFocus) -> v.setActivated(hasFocus));
             resumeBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -927,6 +929,7 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
         }
         View stopBtn = findViewById(R.id.am_pick_stop);
         if (stopBtn != null) {
+            stopBtn.setOnFocusChangeListener((v, hasFocus) -> v.setActivated(hasFocus));
             stopBtn.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
