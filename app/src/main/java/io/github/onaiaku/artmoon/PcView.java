@@ -59,7 +59,8 @@ import org.xmlpull.v1.XmlPullParserException;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-public class PcView extends Activity implements AdapterFragmentCallbacks {
+public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements AdapterFragmentCallbacks {
+    private io.github.onaiaku.artmoon.artlight.PromptBar promptBar;
     private RelativeLayout noPcFoundLayout;
     private PcGridAdapter pcGridAdapter;
     private ShortcutHelper shortcutHelper;
@@ -191,6 +192,13 @@ public class PcView extends Activity implements AdapterFragmentCallbacks {
                 }
             });
         }
+        // Input-aware prompt bar: keycap pills re-render for touch / gamepad /
+        // keyboard (desktop parity — prompts always tell the truth).
+        promptBar = new io.github.onaiaku.artmoon.artlight.PromptBar(this);
+        promptBar.registerById(R.id.am_footer_shutdown, "shutdown");
+        promptBar.registerById(R.id.am_footer_settings, "settings");
+        promptBar.registerById(R.id.am_footer_exit, "exit");
+        promptBar.attach();
 
         getFragmentManager().beginTransaction()
             .replace(R.id.pcFragmentContainer, new AdapterFragment())

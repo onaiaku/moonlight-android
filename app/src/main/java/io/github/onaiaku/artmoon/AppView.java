@@ -51,7 +51,8 @@ import android.widget.AdapterView.AdapterContextMenuInfo;
 
 import org.xmlpull.v1.XmlPullParserException;
 
-public class AppView extends Activity implements AdapterFragmentCallbacks {
+public class AppView extends io.github.onaiaku.artmoon.ArtMoonActivity implements AdapterFragmentCallbacks {
+    private io.github.onaiaku.artmoon.artlight.PromptBar promptBar;
     private AppGridAdapter appGridAdapter;
     private String uuidString;
     private ShortcutHelper shortcutHelper;
@@ -867,6 +868,12 @@ public class AppView extends Activity implements AdapterFragmentCallbacks {
                 }
             });
         }
+        // Input-aware prompt bar (picker footer): pills re-render for
+        // touch / gamepad / keyboard — desktop parity.
+        promptBar = new io.github.onaiaku.artmoon.artlight.PromptBar(this);
+        promptBar.registerById(R.id.am_pick_key_settings, "settings");
+        promptBar.registerById(R.id.am_pick_key_hosts, "hosts");
+        promptBar.attach();
         if (selectedApp == null) {
             // Desktop parity: the preview is NEVER empty. Prefer the running
             // app, otherwise default to the first app in the list so the
