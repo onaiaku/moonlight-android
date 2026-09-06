@@ -14,6 +14,7 @@ import io.github.onaiaku.artmoon.nvstream.http.NvHTTP;
 import io.github.onaiaku.artmoon.nvstream.http.PairingManager;
 import io.github.onaiaku.artmoon.preferences.PreferenceConfiguration;
 import io.github.onaiaku.artmoon.preferences.StreamSettings;
+import io.github.onaiaku.artmoon.artlight.InputModeManager;
 import io.github.onaiaku.artmoon.ui.AdapterFragment;
 import io.github.onaiaku.artmoon.ui.AdapterFragmentCallbacks;
 import io.github.onaiaku.artmoon.utils.CacheHelper;
@@ -793,6 +794,34 @@ if (pickRes != null && pickFps != null && pickBitrate != null) {
     @Override
     public void receiveAbsListView(AbsListView listView) {
         listView.setAdapter(appGridAdapter);
+
+        // Gamepad parity with desktop: when a controller drives the picker,
+        // FOCUS is selection — the detail panel and blue row band follow the
+        // D-pad focus live, so what you see highlighted is what A launches.
+        listView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> arg0, View arg1, int pos, long id) {
+                if (InputModeManager.get().getMode() != InputModeManager.Mode.GAMEPAD) {
+                    return;
+                }
+                if (findViewById(R.id.am_app_detail) == null) {
+                    return; // portrait: no master-detail pane
+                }
+                AppObject app = (AppObject) appGridAdapter.getItem(pos);
+                if (app == null || app == selectedApp) {
+                    return;
+                }
+                selectedApp = app;
+                appGridAdapter.setSelectedApp(app);
+                appGridAdapter.notifyDataSetChanged();
+                updateDetailPanel();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> arg0) {
+            }
+        });
+
         listView.setOnItemClickListener(new OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> arg0, View arg1, int pos,

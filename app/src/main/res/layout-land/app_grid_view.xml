@@ -161,20 +161,6 @@
         android:paddingTop="6dp"
         android:paddingBottom="10dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/am_pick_key_s"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="@color/am_on_accent"
-            android:background="@drawable/am_pill_soft"
-            android:paddingStart="9dp"
-            android:paddingLeft="9dp"
-            android:paddingEnd="9dp"
-            android:paddingRight="9dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp" />
 
         <TextView
             android:id="@+id/am_pick_kb_settings"
@@ -207,20 +193,6 @@
             android:textSize="11sp"
             android:textColor="@color/am_text_secondary" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/am_pick_key_esc"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="@color/am_on_accent"
-            android:background="@drawable/am_pill_soft"
-            android:paddingStart="9dp"
-            android:paddingLeft="9dp"
-            android:paddingEnd="9dp"
-            android:paddingRight="9dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp" />
 
         <TextView
             android:id="@+id/am_pick_kb_hosts"

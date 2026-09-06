@@ -21,6 +21,7 @@
     android:id="@+id/am_hero_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:foreground="@drawable/am_focus_ring"
     android:layout_marginStart="14dp"
     android:layout_marginEnd="14dp"
     android:layout_marginTop="6dp"
