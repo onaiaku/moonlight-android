@@ -1294,6 +1294,7 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
     }
 
     private final java.util.List<View> padPainted = new java.util.ArrayList<>();
+    private boolean padRetryQueued = false;
 
     /**
      * Bind-time repaint hook: called by PcGridAdapter.getView() the moment a
@@ -1322,7 +1323,20 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
         if (padActionIndex >= targets.length) padActionIndex = targets.length - 1;
         View t = targets[padActionIndex];
         if (!t.isAttachedToWindow()) {
-            android.util.Log.d("PadFocus", "paint: SKIP detached idx=" + padActionIndex);
+            // A just-bound row attaches at the END of the layout pass, so a
+            // bind-time paint always sees detached here. Bail WITHOUT clearing
+            // the live ring (ghost protection), then retry next frame — the
+            // view will be attached by then. Guarded so one retry is queued
+            // at a time; the poll observer repaints anyway as a backstop.
+            android.util.Log.d("PadFocus", "paint: SKIP detached idx=" + padActionIndex + " (retry queued)");
+            if (!padRetryQueued) {
+                padRetryQueued = true;
+                if (pcGridView != null) {
+                    pcGridView.post(() -> { padRetryQueued = false; paintPadFocus(); });
+                } else {
+                    padRetryQueued = false;
+                }
+            }
             return;
         }
         for (View v : padPainted) v.setActivated(false);
