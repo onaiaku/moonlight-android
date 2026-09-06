@@ -1060,7 +1060,9 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
                 public void onClick(View v) {
                     if (computer.details.state == ComputerDetails.State.UNKNOWN ||
                         computer.details.state == ComputerDetails.State.OFFLINE) {
-                        openContextMenu(cardView);
+                        if (v != null && v.isAttachedToWindow()) {
+                            openContextMenu(v);
+                        }
                     } else if (computer.details.pairState != PairState.PAIRED) {
                         doPair(computer.details);
                     } else {
@@ -1075,7 +1077,12 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
             options.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    openContextMenu(cardView);
+                    // Anchor to the actually-clicked view: the captured cardView
+                    // can be detached by host polling before the press lands
+                    // (NPE in ViewParent.showContextMenuForChild).
+                    if (v != null && v.isAttachedToWindow()) {
+                        openContextMenu(v);
+                    }
                 }
             });
         }
