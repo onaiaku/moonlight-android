@@ -69,8 +69,10 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
     @Override
     public android.view.View getView(int position, android.view.View convertView, android.view.ViewGroup parent) {
         View v = super.getView(position, convertView, parent);
-        // Desktop FocusFrame parity: the focused row wears the accent ring.
-        v.setActivated(position == focusedPosition);
+        // NOTE: PcView.paintPadFocus is the SINGLE writer of activated state.
+        // The adapter previously painted the row here too, producing a second
+        // ring around the whole hero card on top of the pill ring (Nik saw
+        // Open and Options 'both selected at once'). Do not re-add.
         if (parent != null && parent.getHeight() > 0
                 && v.getLayoutParams().height != parent.getHeight()) {
             android.view.ViewGroup.LayoutParams lp = v.getLayoutParams();
