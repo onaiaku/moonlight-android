@@ -1179,6 +1179,26 @@ public class PcView extends io.github.onaiaku.artmoon.ArtMoonActivity implements
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         boolean gamepad = InputModeManager.get().getMode() == InputModeManager.Mode.GAMEPAD;
+        // Swallow the ACTION_DOWN half of every owned key: if it reaches the
+        // framework it moves Android's hidden geometric focus, painting extra
+        // rings and drifting away from the owned model (two compasses).
+        if (gamepad && event.getAction() == KeyEvent.ACTION_DOWN
+                && !event.isRepeat()) {
+            switch (event.getKeyCode()) {
+                case KeyEvent.KEYCODE_BUTTON_Y:
+                case KeyEvent.KEYCODE_BUTTON_B:
+                case KeyEvent.KEYCODE_BUTTON_A:
+                case KeyEvent.KEYCODE_ENTER:
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                case KeyEvent.KEYCODE_DPAD_UP:
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    return true;
+                default:
+                    break;
+            }
+        }
         if (event.getAction() == KeyEvent.ACTION_UP && gamepad) {
             switch (event.getKeyCode()) {
                 case KeyEvent.KEYCODE_BUTTON_Y:

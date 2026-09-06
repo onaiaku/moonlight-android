@@ -92,7 +92,7 @@
             android:textSize="12sp"
             android:textStyle="bold"
             android:textColor="@color/am_text_secondary"
-            android:background="@drawable/am_picker_pill"
+            android:background="@drawable/am_picker_pill_sel"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
             android:paddingTop="5dp"
